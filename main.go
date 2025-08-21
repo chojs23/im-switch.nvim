@@ -40,7 +40,12 @@ func main() {
 	case 0:
 		current := getCurrentInputSource()
 		if current == "" {
-			fmt.Fprintf(os.Stderr, "Error: Could not get current input source\n")
+			if runtime.GOOS == "linux" {
+				fmt.Fprintf(os.Stderr, "Error: No input method framework detected\n")
+				fmt.Fprintf(os.Stderr, "Please install one of: ibus, fcitx, fcitx5, or ensure setxkbmap is available\n")
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: Could not get current input source\n")
+			}
 			os.Exit(1)
 		}
 		fmt.Println(current)
@@ -50,7 +55,12 @@ func main() {
 		if arg == "-l" || arg == "--list" {
 			sources := getAllInputSources()
 			if sources == nil {
-				fmt.Fprintf(os.Stderr, "Error: Could not get input sources\n")
+				if runtime.GOOS == "linux" {
+					fmt.Fprintf(os.Stderr, "Error: No input method framework detected\n")
+					fmt.Fprintf(os.Stderr, "Please install one of: ibus, fcitx, fcitx5, or ensure setxkbmap is available\n")
+				} else {
+					fmt.Fprintf(os.Stderr, "Error: Could not get input sources\n")
+				}
 				os.Exit(1)
 			}
 			for _, source := range sources {

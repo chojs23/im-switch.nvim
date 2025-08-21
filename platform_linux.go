@@ -95,6 +95,11 @@ func getCurrentInputSourceFcitx() string {
 }
 
 func getCurrentInputSourceXKB() string {
+	// Check if setxkbmap is available
+	if _, err := exec.LookPath("setxkbmap"); err != nil {
+		return ""
+	}
+
 	cmd := exec.Command("setxkbmap", "-query")
 	output, err := cmd.Output()
 	if err != nil {
@@ -185,6 +190,11 @@ func getAllInputSourcesFcitx() []string {
 }
 
 func getAllInputSourcesXKB() []string {
+	// Check if setxkbmap is available
+	if _, err := exec.LookPath("setxkbmap"); err != nil {
+		return nil
+	}
+
 	// Common keyboard layouts
 	return []string{
 		"us",
@@ -233,6 +243,11 @@ func setInputSourceFcitx(sourceID string) bool {
 }
 
 func setInputSourceXKB(sourceID string) bool {
+	// Check if setxkbmap is available
+	if _, err := exec.LookPath("setxkbmap"); err != nil {
+		return false
+	}
+
 	cmd := exec.Command("setxkbmap", sourceID)
 	return cmd.Run() == nil
 }
