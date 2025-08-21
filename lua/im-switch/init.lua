@@ -162,7 +162,16 @@ function M.setup(opts)
 
 	if not opts or not opts.binary_path then
 		local plugin_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h:h")
-		config.binary_path = plugin_dir .. "/im-switch"
+		local local_binary = plugin_dir .. "/build/im-switch"
+		local system_binary = "/usr/local/bin/im-switch"
+
+		if vim.fn.executable(local_binary) == 1 then
+			config.binary_path = local_binary
+		elseif vim.fn.executable(system_binary) == 1 then
+			config.binary_path = system_binary
+		else
+			config.binary_path = "im-switch" -- fallback to PATH
+		end
 	end
 
 	if vim.fn.executable(config.binary_path) ~= 1 then
