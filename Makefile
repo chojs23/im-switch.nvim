@@ -2,9 +2,13 @@ BINARY_NAME=im-switch
 BUILD_DIR=build
 INSTALL_DIR=/usr/local/bin
 
-.PHONY: build clean install uninstall test
+# Go source files
+GO_SOURCES := $(wildcard *.go)
 
-build:
+.PHONY: build clean install uninstall test force-build
+
+# Build only if Go sources are newer than the binary or if binary doesn't exist
+$(BINARY_NAME): $(GO_SOURCES) go.mod
 	mkdir -p $(BUILD_DIR)
 ifeq ($(shell uname),Darwin)
 	CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
@@ -13,7 +17,20 @@ else
 endif
 	cp $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 
-build-release:
+# Alias for the binary target
+build: $(BINARY_NAME)
+
+# Force rebuild regardless of timestamps
+force-build:
+	mkdir -p $(BUILD_DIR)
+ifeq ($(shell uname),Darwin)
+	CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+else
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+endif
+	cp $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
+
+build-release: $(GO_SOURCES) go.mod
 	mkdir -p $(BUILD_DIR)
 ifeq ($(shell uname),Darwin)
 	CGO_ENABLED=1 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
@@ -30,6 +47,7 @@ uninstall:
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f $(BINARY_NAME)
 
 test: build
 	@echo "Testing current input source:"
