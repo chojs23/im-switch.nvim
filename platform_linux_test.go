@@ -51,6 +51,7 @@ func TestLinuxInputMethods(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.method, func(t *testing.T) {
 			current := tc.getter()
+			t.Logf("%s current input source: %s", tc.method, current)
 			sources := tc.lister()
 
 			if sources == nil {

@@ -10,6 +10,7 @@ Perfect for users who type in multiple languages and want seamless input method 
 - **Smart mode switching**: English in normal/command mode, restore in insert mode
 - **macOS native**: Uses macOS Text Input Source APIs
 - **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
+- **Windows support**: Uses Windows Keyboard Layout APIs
 
 ## Installation
 
@@ -49,6 +50,7 @@ require('im-switch').setup({
   -- Default input method ID (platform-specific defaults)
   -- macOS: 'com.apple.keylayout.ABC'
   -- Linux: 'us' (XKB), 'xkb:us::eng' (IBus), 'keyboard-us' (Fcitx)
+  -- Windows: 'en-US' or '00000409' (layout ID)
   default_input = nil, -- Uses platform default
 
   -- Auto-switch to default input in normal mode (default: true)
@@ -164,6 +166,32 @@ make build
 - `mozc` - Japanese
 - `hangul` - Korean
 
+#### Windows
+
+**Keyboard Layout Names**:
+
+- `en-US` - English (United States)
+- `en-GB` - English (United Kingdom)
+- `de-DE` - German (Germany)
+- `fr-FR` - French (France)
+- `ja-JP` - Japanese
+- `ko-KR` - Korean
+- `zh-CN` - Chinese (Simplified)
+- `zh-TW` - Chinese (Traditional)
+- `ru-RU` - Russian
+
+**Layout IDs** (alternative format):
+
+- `00000409` - English (United States)
+- `00000809` - English (United Kingdom)
+- `00000407` - German (Germany)
+- `0000040c` - French (France)
+- `00000411` - Japanese
+- `00000412` - Korean
+- `00000804` - Chinese (Simplified)
+- `00000404` - Chinese (Traditional)
+- `00000419` - Russian
+
 ## Building Manually
 
 If you need to build the binary manually:
@@ -224,10 +252,16 @@ make test
   - Fcitx5 (`fcitx5`)
   - XKB (setxkbmap - built into X11/Wayland)
 
+### Windows
+
+- **Neovim** (uses Neovim-specific APIs)
+- **Windows 7 or later** (uses Windows Keyboard Layout APIs)
+- **Go 1.19+** (for building the binary)
+
 ## How It Differs from Other Solutions
 
-- **Cross-platform**: Works on both macOS and Linux
-- **Native Integration**: Uses platform-specific APIs (macOS) and tools (Linux)
+- **Cross-platform**: Works on macOS, Linux, and Windows
+- **Native Integration**: Uses platform-specific APIs (macOS, Windows) and tools (Linux)
 - **Smart Restoration**: Remembers and restores your previous input method
 - **Focus Aware**: Handles window focus changes intelligently
 - **Auto-detection**: Automatically detects and works with available input method frameworks

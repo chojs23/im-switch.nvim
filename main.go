@@ -17,6 +17,12 @@ func printUsage() {
 		fmt.Println("  # macOS")
 		fmt.Println("  im-switch com.apple.keylayout.ABC")
 		fmt.Println("  im-switch com.apple.inputmethod.Korean.2SetKorean")
+	} else if runtime.GOOS == "windows" {
+		fmt.Println("  # Windows")
+		fmt.Println("  im-switch en-US                 # English (United States)")
+		fmt.Println("  im-switch 00000409              # English (United States) by layout ID")
+		fmt.Println("  im-switch de-DE                 # German (Germany)")
+		fmt.Println("  im-switch ja-JP                 # Japanese")
 	} else {
 		fmt.Println("  # Linux")
 		fmt.Println("  im-switch us                    # XKB layout")
