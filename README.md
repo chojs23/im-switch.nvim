@@ -4,6 +4,8 @@ A Neovim plugin that automatically switches keyboard input method to English whe
 
 Perfect for users who type in multiple languages and want seamless input method switching in Neovim.
 
+[![](https://github.com/user-attachments/assets/d7c25f49-ae59-4aaf-866d-1ab29663a018)](https://github.com/user-attachments/assets/d7c25f49-ae59-4aaf-866d-1ab29663a018)
+
 ## Features
 
 - **Auto-switch to English** when Neovim gains focus
@@ -18,14 +20,14 @@ Perfect for users who type in multiple languages and want seamless input method 
 
 ```lua
 {
-  "your-username/im-switch.nvim", -- Replace with your repo path
-  build = "make build", -- Async build handled by LazyVim
+  "chojs23/im-switch.nvim",
+  build = "make build",
   config = function()
     require('im-switch').setup({
       -- Configuration options (see below)
     })
   end,
-  event = "VeryLazy", -- Load after UI is ready
+  event = "VeryLazy",
 }
 ```
 
@@ -257,14 +259,6 @@ make test
 - **Neovim** (uses Neovim-specific APIs)
 - **Windows 7 or later** (uses Windows Keyboard Layout APIs)
 - **Go 1.19+** (for building the binary)
-
-## How It Differs from Other Solutions
-
-- **Cross-platform**: Works on macOS, Linux, and Windows
-- **Native Integration**: Uses platform-specific APIs (macOS, Windows) and tools (Linux)
-- **Smart Restoration**: Remembers and restores your previous input method
-- **Focus Aware**: Handles window focus changes intelligently
-- **Auto-detection**: Automatically detects and works with available input method frameworks
 
 ## License
 
