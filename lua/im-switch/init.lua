@@ -36,6 +36,7 @@ local config = get_default_config()
 
 local saved_input = nil
 local last_mode = nil
+local enabled = true
 
 local function log(msg)
 	if config.debug then
@@ -80,7 +81,7 @@ local function set_input(input_id)
 end
 
 local function switch_to_default()
-	if config.auto_switch then
+	if enabled and config.auto_switch then
 		local current = get_current_input()
 		if current and current ~= config.default_input then
 			saved_input = current
@@ -91,7 +92,7 @@ local function switch_to_default()
 end
 
 local function restore_input()
-	if config.auto_restore and saved_input then
+	if enabled and config.auto_restore and saved_input then
 		log("Restoring input: " .. saved_input)
 		set_input(saved_input)
 		saved_input = nil
@@ -99,6 +100,10 @@ local function restore_input()
 end
 
 local function on_mode_changed()
+	if not enabled then
+		return
+	end
+
 	local mode = vim.fn.mode()
 
 	if mode == "n" or mode == "c" then
@@ -111,10 +116,16 @@ local function on_mode_changed()
 end
 
 local function on_focus_gained()
-	switch_to_default()
+	if enabled then
+		switch_to_default()
+	end
 end
 
 local function on_focus_lost()
+	if not enabled then
+		return
+	end
+
 	local current = get_current_input()
 	if current and current ~= config.default_input then
 		saved_input = current
@@ -170,6 +181,38 @@ function M.setup(opts)
 
 	setup_autocmds()
 
+	-- Create user commands
+	vim.api.nvim_create_user_command("ImSwitchEnable", function()
+		enabled = true
+		vim.notify("[im-switch] Enabled", vim.log.levels.INFO)
+		log("Plugin enabled")
+		-- Switch to default immediately when enabled
+		switch_to_default()
+	end, { desc = "Enable im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchDisable", function()
+		enabled = false
+		vim.notify("[im-switch] Disabled", vim.log.levels.INFO)
+		log("Plugin disabled")
+	end, { desc = "Disable im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchToggle", function()
+		enabled = not enabled
+		local status = enabled and "Enabled" or "Disabled"
+		vim.notify("[im-switch] " .. status, vim.log.levels.INFO)
+		log("Plugin " .. status:lower())
+		if enabled then
+			switch_to_default()
+		end
+	end, { desc = "Toggle im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchStatus", function()
+		local status = enabled and "Enabled" or "Disabled"
+		local current = get_current_input()
+		local msg = string.format("[im-switch] Status: %s | Current input: %s", status, current or "Unknown")
+		vim.notify(msg, vim.log.levels.INFO)
+	end, { desc = "Show im-switch plugin status" })
+
 	log("im-switch plugin initialized")
 end
 
@@ -195,6 +238,30 @@ function M.list_inputs()
 		return vim.split(result, "\n")
 	end
 	return {}
+end
+
+function M.enable()
+	enabled = true
+	log("Plugin enabled via API")
+	switch_to_default()
+end
+
+function M.disable()
+	enabled = false
+	log("Plugin disabled via API")
+end
+
+function M.toggle()
+	enabled = not enabled
+	log("Plugin " .. (enabled and "enabled" or "disabled") .. " via API")
+	if enabled then
+		switch_to_default()
+	end
+	return enabled
+end
+
+function M.is_enabled()
+	return enabled
 end
 
 return M
