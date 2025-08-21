@@ -236,4 +236,3 @@ func setInputSourceXKB(sourceID string) bool {
 	cmd := exec.Command("setxkbmap", sourceID)
 	return cmd.Run() == nil
 }
-

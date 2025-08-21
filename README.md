@@ -6,13 +6,10 @@ Perfect for users who type in multiple languages and want seamless input method 
 
 ## Features
 
-- 🎯 **Auto-switch to English** when Neovim gains focus
-- 🔄 **Smart mode switching**: English in normal/command mode, restore in insert mode
-- 🛠️ **Auto-build**: Binary builds automatically on first plugin load
-- ⚙️ **Configurable**: Custom input methods and behavior
-- 🐛 **Debug mode** for troubleshooting
-- 🍎 **macOS native**: Uses macOS Text Input Source APIs
-- 🐧 **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
+- **Auto-switch to English** when Neovim gains focus
+- **Smart mode switching**: English in normal/command mode, restore in insert mode
+- **macOS native**: Uses macOS Text Input Source APIs
+- **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
 
 ## Installation
 
@@ -102,7 +99,6 @@ The plugin automatically handles these events:
    - Insert mode (from normal) → restores previous input method
 3. **Session Management**:
    - Startup → switches to default input
-   - Exit → restores previous input method
 
 ## Finding Input Method IDs
 
@@ -119,6 +115,7 @@ make build
 ### Common Input Method IDs
 
 #### macOS
+
 - `com.apple.keylayout.ABC` - US English
 - `com.apple.inputmethod.Korean.2SetKorean` - Korean (2-Set)
 - `com.apple.inputmethod.Korean` - Korean
@@ -126,9 +123,11 @@ make build
 - `com.apple.inputmethod.TCIM.Cangjie` - Chinese (Traditional)
 
 #### Linux
+
 **XKB Layouts** (setxkbmap):
+
 - `us` - US English
-- `gb` - UK English  
+- `gb` - UK English
 - `de` - German
 - `fr` - French
 - `ru` - Russian
@@ -137,12 +136,14 @@ make build
 - `kr` - Korean
 
 **IBus Engines**:
+
 - `xkb:us::eng` - US English
 - `libpinyin` - Chinese Pinyin
 - `anthy` - Japanese
 - `hangul` - Korean
 
 **Fcitx/Fcitx5**:
+
 - `keyboard-us` - US English
 - `pinyin` - Chinese Pinyin
 - `mozc` - Japanese
@@ -191,6 +192,7 @@ make test
 ## Requirements
 
 ### macOS
+
 - **Neovim** (uses Neovim-specific APIs)
 - **macOS** (uses macOS Text Input Source framework)
 - **Go 1.19+** (for building the binary)
@@ -198,6 +200,7 @@ make test
 - **Xcode Command Line Tools** (`xcode-select --install`)
 
 ### Linux
+
 - **Neovim** (uses Neovim-specific APIs)
 - **Go 1.19+** (for building the binary)
 - **Input Method Framework**: One of:
@@ -212,8 +215,6 @@ make test
 - **Native Integration**: Uses platform-specific APIs (macOS) and tools (Linux)
 - **Smart Restoration**: Remembers and restores your previous input method
 - **Focus Aware**: Handles window focus changes intelligently
-- **Auto-build**: No manual compilation needed
-- **Lightweight**: Single binary with minimal overhead
 - **Auto-detection**: Automatically detects and works with available input method frameworks
 
 ## License
@@ -221,11 +222,5 @@ make test
 MIT License - see LICENSE file for details.
 
 ## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
 
 Issues and feature requests are welcome

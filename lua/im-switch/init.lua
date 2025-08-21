@@ -143,11 +143,6 @@ local function setup_autocmds()
 		group = group,
 		callback = switch_to_default,
 	})
-
-	vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
-		group = group,
-		callback = restore_input,
-	})
 end
 
 function M.setup(opts)
