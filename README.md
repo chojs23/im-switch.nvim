@@ -20,11 +20,27 @@ Perfect for users who type in multiple languages and want seamless input method 
 ```lua
 {
   "your-username/im-switch.nvim", -- Replace with your repo path
+  build = "make build", -- Async build handled by LazyVim
   config = function()
     require('im-switch').setup({
       -- Configuration options (see below)
     })
   end,
+  event = "VeryLazy", -- Load after UI is ready
+}
+```
+
+#### Local Development with LazyVim
+
+```lua
+{
+  dir = "/path/to/im-switch",
+  name = "im-switch",
+  build = "make build",
+  config = function()
+    require("im-switch").setup()
+  end,
+  event = "VeryLazy",
 }
 ```
 
@@ -50,7 +66,7 @@ use {
 }
 ```
 
-The plugin will automatically build the Go binary (`im-switch`) on first load if it doesn't exist.
+**LazyVim Async Build**: The `build = "make build"` option tells LazyVim to build the binary asynchronously, preventing Neovim from freezing during compilation.
 
 ## Configuration
 
