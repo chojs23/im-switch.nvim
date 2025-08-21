@@ -54,8 +54,8 @@ require('im-switch').setup({
   -- Auto-switch to default input in normal mode (default: true)
   auto_switch = true,
 
-  -- Auto-restore previous input in insert mode (default: true)
-  auto_restore = true,
+  -- Auto-restore previous input in insert mode (default: false) (experimental)
+  auto_restore = false,
 
   -- Enable debug logging (default: false)
   debug = false,
@@ -66,14 +66,29 @@ require('im-switch').setup({
 
 The plugin works automatically once installed. However, you can also control it manually:
 
+### Commands
+
+```vim
+  :ImSwitchEnable " Enable plugin
+  :ImSwitchDisable " Disable plugin
+  :ImSwitchToggle " Toggle plugin state
+  :ImSwitchStatus " Show current status and input method
+```
+
+### Lua API
+
 ```lua
 local im_switch = require('im-switch')
 
--- Switch to default input
-im_switch.switch_to_english()
+-- Enable/Disable controls
+im_switch.enable()        -- Enable the plugin
+im_switch.disable()       -- Disable the plugin
+local enabled = im_switch.toggle()  -- Toggle and return new state
+local is_on = im_switch.is_enabled() -- Check if enabled
 
--- Restore previous input method
-im_switch.restore_input()
+-- Input method controls
+im_switch.switch_to_english()  -- Switch to default input
+im_switch.restore_input()      -- Restore previous input method
 
 -- Get current input method
 local current = im_switch.get_current()
@@ -96,7 +111,7 @@ The plugin automatically handles these events:
 1. **Focus Events**: When Neovim gains focus → switches to default input
 2. **Mode Changes**:
    - Normal/Command mode → switches to default input
-   - Insert mode (from normal) → restores previous input method
+   - Insert mode (from normal) → restores previous input method (if auto_restore is enabled)
 3. **Session Management**:
    - Startup → switches to default input
 

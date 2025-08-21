@@ -9,7 +9,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "com.apple.keylayout.ABC",
 			auto_switch = true,
-			auto_restore = true,
+			auto_restore = false,
 			debug = false,
 		}
 	elseif is_linux then
@@ -17,7 +17,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "us",
 			auto_switch = true,
-			auto_restore = true,
+			auto_restore = false,
 			debug = false,
 		}
 	else -- TODO: window support
@@ -26,7 +26,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "us",
 			auto_switch = true,
-			auto_restore = true,
+			auto_restore = false,
 			debug = false,
 		}
 	end

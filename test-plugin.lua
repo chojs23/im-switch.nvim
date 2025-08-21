@@ -33,4 +33,3 @@ local new_current = nvim_hangul.get_current()
 print("After switch: " .. (new_current or "nil"))
 
 print("Plugin test completed!")
-

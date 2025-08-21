@@ -4,16 +4,16 @@ package.path = package.path .. ";./lua/?.lua;./lua/?/init.lua"
 
 local function run_lua_tests()
 	print("Running Lua tests for im-switch plugin...")
-	local test_module = require('im-switch.init_test')
+	local test_module = require("im-switch.init_test")
 	local success = test_module.run_all_tests()
 	return success
 end
 
 local function run_integration_test()
 	print("\nRunning integration test...")
-	
-	local im_switch = require('im-switch.init')
-	
+
+	local im_switch = require("im-switch.init")
+
 	_G.vim = {
 		fn = {
 			has = function(feature)
@@ -24,16 +24,16 @@ local function run_integration_test()
 				end
 				return 0
 			end,
-			executable = function(path) 
+			executable = function(path)
 				return 1
 			end,
-			fnamemodify = function(path, modifier) 
+			fnamemodify = function(path, modifier)
 				return "./im-switch"
 			end,
 		},
 		tbl_deep_extend = function(behavior, ...)
 			local result = {}
-			for _, t in ipairs({...}) do
+			for _, t in ipairs({ ... }) do
 				for k, v in pairs(t) do
 					result[k] = v
 				end
@@ -41,10 +41,12 @@ local function run_integration_test()
 			return result
 		end,
 		api = {
-			nvim_create_augroup = function(name, opts) return 1 end,
+			nvim_create_augroup = function(name, opts)
+				return 1
+			end,
 			nvim_create_autocmd = function(events, opts) end,
 		},
-		notify = function(msg, level) 
+		notify = function(msg, level)
 			print("NOTIFY: " .. msg)
 		end,
 		log = { levels = { WARN = 1 } },
@@ -56,36 +58,40 @@ local function run_integration_test()
 			return result
 		end,
 	}
-	
+
 	_G.debug = {
 		getinfo = function(level, what)
 			return { source = "@" .. os.getenv("PWD") .. "/lua/im-switch/init.lua" }
-		end
+		end,
 	}
-	
+
 	_G.io = {
 		popen = function(cmd)
 			local handle = io.popen(cmd .. " 2>&1")
 			if not handle then
 				return {
-					read = function() return "" end,
-					close = function() return false end
+					read = function()
+						return ""
+					end,
+					close = function()
+						return false
+					end,
 				}
 			end
 			return handle
-		end
+		end,
 	}
-	
+
 	local success, err = pcall(function()
-		im_switch.setup({debug = true})
-		
+		im_switch.setup({ debug = true })
+
 		local current = im_switch.get_current()
 		if current and current ~= "" then
 			print("✓ get_current: " .. current)
 		else
 			print("✗ get_current returned empty or nil")
 		end
-		
+
 		local inputs = im_switch.list_inputs()
 		if inputs and #inputs > 0 then
 			print("✓ list_inputs: found " .. #inputs .. " inputs")
@@ -101,12 +107,12 @@ local function run_integration_test()
 			print("✗ list_inputs returned empty or nil")
 		end
 	end)
-	
+
 	if not success then
 		print("✗ Integration test failed: " .. err)
 		return false
 	end
-	
+
 	print("✓ Integration test completed")
 	return true
 end
@@ -114,7 +120,7 @@ end
 local function main()
 	local lua_success = run_lua_tests()
 	local integration_success = run_integration_test()
-	
+
 	print("\n" .. string.rep("=", 50))
 	if lua_success and integration_success then
 		print("All tests passed!")
@@ -126,3 +132,4 @@ local function main()
 end
 
 main()
+
