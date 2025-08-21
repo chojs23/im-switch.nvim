@@ -30,20 +30,6 @@ Perfect for users who type in multiple languages and want seamless input method 
 }
 ```
 
-#### Local Development with LazyVim
-
-```lua
-{
-  dir = "/path/to/im-switch",
-  name = "im-switch",
-  build = "make build",
-  config = function()
-    require("im-switch").setup()
-  end,
-  event = "VeryLazy",
-}
-```
-
 ### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
@@ -55,19 +41,6 @@ use {
 }
 ```
 
-### Local Installation
-
-```lua
-{
-  dir = "/path/to/im-switch.nvim", -- Local path to this plugin
-  config = function()
-    require('im-switch').setup()
-  end,
-}
-```
-
-**LazyVim Async Build**: The `build = "make build"` option tells LazyVim to build the binary asynchronously, preventing Neovim from freezing during compilation.
-
 ## Configuration
 
 ```lua
@@ -75,10 +48,10 @@ require('im-switch').setup({
   -- Path to the binary (auto-detected if not specified)
   binary_path = 'im-switch',
 
-  -- English input method ID (default: US English)
-  english_input = 'com.apple.keylayout.ABC',
+  -- Default input method ID (default: US English)
+  default_input = 'com.apple.keylayout.ABC',
 
-  -- Auto-switch to English in normal mode (default: true)
+  -- Auto-switch to default input in normal mode (default: true)
   auto_switch = true,
 
   -- Auto-restore previous input in insert mode (default: true)
@@ -96,7 +69,7 @@ The plugin works automatically once installed. However, you can also control it 
 ```lua
 local im_switch = require('im-switch')
 
--- Switch to English
+-- Switch to default input
 im_switch.switch_to_english()
 
 -- Restore previous input method
@@ -120,12 +93,12 @@ end
 
 The plugin automatically handles these events:
 
-1. **Focus Events**: When Neovim gains focus → switches to English
+1. **Focus Events**: When Neovim gains focus → switches to default input
 2. **Mode Changes**:
-   - Normal/Command mode → switches to English
+   - Normal/Command mode → switches to default input
    - Insert mode (from normal) → restores previous input method
 3. **Session Management**:
-   - Startup → switches to English
+   - Startup → switches to default input
    - Exit → restores previous input method
 
 ## Finding Input Method IDs
@@ -181,7 +154,7 @@ make test
    require('im-switch').setup({ debug = true })
    ```
 2. Check available input methods: `./build/im-switch -l`
-3. Verify your `english_input` setting matches an available input method
+3. Verify your `default_input` setting matches an available input method
 
 ### Permission errors
 
@@ -216,4 +189,3 @@ MIT License - see LICENSE file for details.
 5. Submit a pull request
 
 Issues and feature requests are welcome
-
