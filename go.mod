@@ -1,4 +1,4 @@
-module github.com/chojs23/nvim-hangul-go
+module github.com/chojs23/im-switch
 
 go 1.24.1
 
