@@ -12,6 +12,7 @@ Perfect for users who type in multiple languages and want seamless input method 
 - ⚙️ **Configurable**: Custom input methods and behavior
 - 🐛 **Debug mode** for troubleshooting
 - 🍎 **macOS native**: Uses macOS Text Input Source APIs
+- 🐧 **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
 
 ## Installation
 
@@ -48,8 +49,10 @@ require('im-switch').setup({
   -- Path to the binary (auto-detected if not specified)
   binary_path = 'im-switch',
 
-  -- Default input method ID (default: US English)
-  default_input = 'com.apple.keylayout.ABC',
+  -- Default input method ID (platform-specific defaults)
+  -- macOS: 'com.apple.keylayout.ABC'
+  -- Linux: 'us' (XKB), 'xkb:us::eng' (IBus), 'keyboard-us' (Fcitx)
+  default_input = nil, -- Uses platform default
 
   -- Auto-switch to default input in normal mode (default: true)
   auto_switch = true,
@@ -113,13 +116,37 @@ make build
 ./build/im-switch -l
 ```
 
-### Common macOS Input Methods
+### Common Input Method IDs
 
+#### macOS
 - `com.apple.keylayout.ABC` - US English
 - `com.apple.inputmethod.Korean.2SetKorean` - Korean (2-Set)
 - `com.apple.inputmethod.Korean` - Korean
 - `com.apple.inputmethod.SCIM.ITABC` - Chinese (Simplified)
 - `com.apple.inputmethod.TCIM.Cangjie` - Chinese (Traditional)
+
+#### Linux
+**XKB Layouts** (setxkbmap):
+- `us` - US English
+- `gb` - UK English  
+- `de` - German
+- `fr` - French
+- `ru` - Russian
+- `cn` - Chinese
+- `jp` - Japanese
+- `kr` - Korean
+
+**IBus Engines**:
+- `xkb:us::eng` - US English
+- `libpinyin` - Chinese Pinyin
+- `anthy` - Japanese
+- `hangul` - Korean
+
+**Fcitx/Fcitx5**:
+- `keyboard-us` - US English
+- `pinyin` - Chinese Pinyin
+- `mozc` - Japanese
+- `hangul` - Korean
 
 ## Building Manually
 
@@ -163,18 +190,31 @@ make test
 
 ## Requirements
 
+### macOS
 - **Neovim** (uses Neovim-specific APIs)
 - **macOS** (uses macOS Text Input Source framework)
 - **Go 1.19+** (for building the binary)
 - **CGO enabled** (uses macOS system APIs)
+- **Xcode Command Line Tools** (`xcode-select --install`)
+
+### Linux
+- **Neovim** (uses Neovim-specific APIs)
+- **Go 1.19+** (for building the binary)
+- **Input Method Framework**: One of:
+  - IBus (`ibus-daemon`)
+  - Fcitx (`fcitx`)
+  - Fcitx5 (`fcitx5`)
+  - XKB (setxkbmap - built into X11/Wayland)
 
 ## How It Differs from Other Solutions
 
-- **Native Integration**: Uses macOS APIs directly, no external dependencies
+- **Cross-platform**: Works on both macOS and Linux
+- **Native Integration**: Uses platform-specific APIs (macOS) and tools (Linux)
 - **Smart Restoration**: Remembers and restores your previous input method
 - **Focus Aware**: Handles window focus changes intelligently
 - **Auto-build**: No manual compilation needed
 - **Lightweight**: Single binary with minimal overhead
+- **Auto-detection**: Automatically detects and works with available input method frameworks
 
 ## License
 

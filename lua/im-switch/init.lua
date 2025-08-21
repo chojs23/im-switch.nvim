@@ -1,12 +1,38 @@
 local M = {}
 
-local config = {
-	binary_path = "im-switch",
-	default_input = "com.apple.keylayout.ABC",
-	auto_switch = true,
-	auto_restore = true,
-	debug = false,
-}
+local function get_default_config()
+	local is_mac = vim.fn.has("mac") == 1 or vim.fn.has("macunix") == 1
+	local is_linux = vim.fn.has("unix") == 1 and not is_mac
+
+	if is_mac then
+		return {
+			binary_path = "im-switch",
+			default_input = "com.apple.keylayout.ABC",
+			auto_switch = true,
+			auto_restore = true,
+			debug = false,
+		}
+	elseif is_linux then
+		return {
+			binary_path = "im-switch",
+			default_input = "us",
+			auto_switch = true,
+			auto_restore = true,
+			debug = false,
+		}
+	else -- TODO: window support
+		-- Fallback for other systems
+		return {
+			binary_path = "im-switch",
+			default_input = "us",
+			auto_switch = true,
+			auto_restore = true,
+			debug = false,
+		}
+	end
+end
+
+local config = get_default_config()
 
 local saved_input = nil
 local last_mode = nil

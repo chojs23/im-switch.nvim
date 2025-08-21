@@ -6,12 +6,20 @@ INSTALL_DIR=/usr/local/bin
 
 build:
 	mkdir -p $(BUILD_DIR)
+ifeq ($(shell uname),Darwin)
 	CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+else
+	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+endif
 	cp $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 
 build-release:
 	mkdir -p $(BUILD_DIR)
+ifeq ($(shell uname),Darwin)
 	CGO_ENABLED=1 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
+else
+	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
+endif
 
 install: build
 	cp $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/im-switch
