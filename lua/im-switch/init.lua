@@ -20,11 +20,10 @@ local function get_default_config()
 			auto_restore = false,
 			debug = false,
 		}
-	else -- TODO: window support
-		-- Fallback for other systems
+	else
 		return {
 			binary_path = "im-switch",
-			default_input = "us",
+			default_input = "en-US",
 			auto_switch = true,
 			auto_restore = false,
 			debug = false,

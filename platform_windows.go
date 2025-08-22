@@ -47,7 +47,8 @@ func getCurrentInputSource() string {
 }
 
 func getLayoutName(hkl HKL) string {
-	layoutId := fmt.Sprintf("%08X", uint32(hkl))
+	// Extract the low 16 bits for the keyboard layout ID
+	layoutId := fmt.Sprintf("%08X", uint32(hkl)&0xFFFF)
 	if name, exists := commonLayouts[layoutId]; exists {
 		return name
 	}
