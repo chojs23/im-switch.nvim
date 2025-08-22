@@ -127,7 +127,9 @@ local function on_mode_changed()
 end
 
 local function on_focus_gained()
-	if enabled then
+	local mode = vim.fn.mode()
+
+	if enabled and mode ~= "i" then
 		switch_to_default()
 	end
 end
