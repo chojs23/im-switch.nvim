@@ -4,7 +4,26 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 )
+
+// isWSLDetected checks if we're running in WSL
+func isWSLDetected() bool {
+	// Check for WSL environment variables
+	if os.Getenv("WSL_DISTRO_NAME") != "" {
+		return true
+	}
+
+	// Check for WSL in kernel version
+	if data, err := os.ReadFile("/proc/version"); err == nil {
+		version := strings.ToLower(string(data))
+		if strings.Contains(version, "microsoft") && strings.Contains(version, "wsl") {
+			return true
+		}
+	}
+
+	return false
+}
 
 func printUsage() {
 	fmt.Println("Usage:")
@@ -30,7 +49,11 @@ func printUsage() {
 		fmt.Println("  im-switch keyboard-us           # Fcitx")
 	}
 	fmt.Println("")
-	fmt.Printf("Platform: %s\n", runtime.GOOS)
+	platform := runtime.GOOS
+	if runtime.GOOS == "linux" && isWSLDetected() {
+		platform = "linux (WSL)"
+	}
+	fmt.Printf("Platform: %s\n", platform)
 }
 
 func main() {

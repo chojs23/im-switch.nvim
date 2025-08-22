@@ -51,6 +51,11 @@ func isProcessRunning(process string) bool {
 }
 
 func getCurrentInputSource() string {
+	// Check if we're in WSL and delegate accordingly
+	if isWSL() {
+		return getCurrentInputSourceWSLProxy()
+	}
+
 	method := detectInputMethod()
 
 	switch method {
@@ -119,6 +124,11 @@ func getCurrentInputSourceXKB() string {
 }
 
 func getAllInputSources() []string {
+	// Check if we're in WSL and delegate accordingly
+	if isWSL() {
+		return getAllInputSourcesWSLProxy()
+	}
+
 	method := detectInputMethod()
 
 	switch method {
@@ -211,6 +221,11 @@ func getAllInputSourcesXKB() []string {
 }
 
 func setInputSource(sourceID string) bool {
+	// Check if we're in WSL and delegate accordingly
+	if isWSL() {
+		return setInputSourceWSLProxy(sourceID)
+	}
+
 	method := detectInputMethod()
 
 	switch method {
