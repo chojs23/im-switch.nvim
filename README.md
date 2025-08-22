@@ -35,10 +35,11 @@ Perfect for users who type in multiple languages and want seamless input method 
 
 ```lua
 use {
-  'your-username/im-switch.nvim', -- Replace with your repo path
+  'chojs23/im-switch.nvim',
   config = function()
     require('im-switch').setup()
   end
+  run = 'make build',
 }
 ```
 

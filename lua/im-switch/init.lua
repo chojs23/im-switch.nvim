@@ -1,5 +1,7 @@
+---@type ImSwitch
 local M = {}
 
+---@return ImSwitchConfig
 local function get_default_config()
 	local is_mac = vim.fn.has("mac") == 1 or vim.fn.has("macunix") == 1
 	local is_linux = vim.fn.has("unix") == 1 and not is_mac
@@ -32,18 +34,25 @@ local function get_default_config()
 	end
 end
 
+---@type ImSwitchConfig
 local config = get_default_config()
 
+---@type string|nil
 local saved_input = nil
+---@type string|nil
 local last_mode = nil
+---@type boolean
 local enabled = true
 
+---@param msg string
 local function log(msg)
 	if config.debug then
 		print("[im-switch] " .. msg)
 	end
 end
 
+---@param args string|nil Command arguments
+---@return string|nil result Command output or nil if failed
 local function execute_command(args)
 	local cmd = config.binary_path
 	if args then
@@ -67,10 +76,13 @@ local function execute_command(args)
 	return result:gsub("%s+$", "")
 end
 
+---@return string|nil current_input Current input method ID or nil if failed
 local function get_current_input()
 	return execute_command()
 end
 
+---@param input_id string Input method ID to switch to
+---@return boolean success True if successful, false otherwise
 local function set_input(input_id)
 	if input_id and input_id ~= "" then
 		local result = execute_command(input_id)
@@ -156,6 +168,8 @@ local function setup_autocmds()
 	})
 end
 
+---Initialize the im-switch plugin
+---@param opts? ImSwitchConfig Configuration options
 function M.setup(opts)
 	opts = opts or {}
 	config = vim.tbl_deep_extend("force", config, opts)
@@ -233,14 +247,21 @@ function M.restore_input()
 	restore_input()
 end
 
+---Get the current input method
+---@return string|nil current_input Current input method ID or nil if failed
 function M.get_current()
 	return get_current_input()
 end
 
+---Set input method to the specified ID
+---@param input_id string Input method ID to switch to
+---@return boolean success True if successful, false otherwise
 function M.set_input(input_id)
 	return set_input(input_id)
 end
 
+---List all available input methods
+---@return string[] inputs Array of available input method IDs
 function M.list_inputs()
 	local result = execute_command("-l")
 	if result then
@@ -249,17 +270,21 @@ function M.list_inputs()
 	return {}
 end
 
+---Enable the plugin
 function M.enable()
 	enabled = true
 	log("Plugin enabled via API")
 	switch_to_default()
 end
 
+---Disable the plugin
 function M.disable()
 	enabled = false
 	log("Plugin disabled via API")
 end
 
+---Toggle the plugin state
+---@return boolean enabled New enabled state
 function M.toggle()
 	enabled = not enabled
 	log("Plugin " .. (enabled and "enabled" or "disabled") .. " via API")
@@ -269,6 +294,8 @@ function M.toggle()
 	return enabled
 end
 
+---Check if the plugin is enabled
+---@return boolean enabled True if enabled, false otherwise
 function M.is_enabled()
 	return enabled
 end
