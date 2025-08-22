@@ -37,7 +37,7 @@ var commonLayouts = map[string]string{
 }
 
 func getCurrentInputSource() string {
-	ret, _, _ := procGetKeyboardLayout.Call(0) // 0 means current thread
+	ret, _, _ := procGetKeyboardLayout.Call(0)
 	if ret == 0 {
 		return ""
 	}
@@ -47,14 +47,6 @@ func getCurrentInputSource() string {
 }
 
 func getLayoutName(hkl HKL) string {
-	// Try to get the layout name using GetKeyboardLayoutNameW
-	buf := make([]uint16, 9) // KL_NAMELENGTH is 9 characters
-	ret, _, _ := procGetKeyboardLayoutNameW.Call(uintptr(unsafe.Pointer(&buf[0])))
-	if ret != 0 {
-		return windows.UTF16ToString(buf)
-	}
-
-	// Fallback: convert HKL to hex string
 	layoutId := fmt.Sprintf("%08X", uint32(hkl))
 	if name, exists := commonLayouts[layoutId]; exists {
 		return name
@@ -64,13 +56,11 @@ func getLayoutName(hkl HKL) string {
 }
 
 func getAllInputSources() []string {
-	// Get the number of keyboard layouts
 	count, _, _ := procGetKeyboardLayoutList.Call(0, 0)
 	if count == 0 {
 		return nil
 	}
 
-	// Allocate buffer for layout handles
 	layouts := make([]HKL, count)
 	ret, _, _ := procGetKeyboardLayoutList.Call(
 		uintptr(count),
@@ -93,11 +83,9 @@ func getAllInputSources() []string {
 }
 
 func setInputSource(sourceID string) bool {
-	// First, try to find the layout by name
 	var targetHKL HKL
 	found := false
 
-	// Get all available layouts to find matching HKL
 	count, _, _ := procGetKeyboardLayoutList.Call(0, 0)
 	if count == 0 {
 		return false
@@ -113,7 +101,6 @@ func setInputSource(sourceID string) bool {
 		return false
 	}
 
-	// Find the HKL that matches our source ID
 	for _, hkl := range hklList[:ret] {
 		name := getLayoutName(hkl)
 		if name == sourceID {
@@ -123,13 +110,11 @@ func setInputSource(sourceID string) bool {
 		}
 	}
 
-	// If not found by name, try to parse as hex layout ID
 	if !found {
-		// Try to load the keyboard layout if it's not already loaded
 		sourcePtr, _ := windows.UTF16PtrFromString(sourceID)
 		ret, _, _ := procLoadKeyboardLayoutW.Call(
 			uintptr(unsafe.Pointer(sourcePtr)),
-			0, // KLF_ACTIVATE flag
+			0,
 		)
 		if ret != 0 {
 			targetHKL = HKL(ret)
@@ -141,10 +126,9 @@ func setInputSource(sourceID string) bool {
 		return false
 	}
 
-	// Activate the keyboard layout
 	ret, _, _ = procActivateKeyboardLayout.Call(
 		uintptr(targetHKL),
-		0, // KLF_SETFORPROCESS flag
+		0,
 	)
 
 	return ret != 0
