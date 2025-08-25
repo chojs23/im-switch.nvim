@@ -12,7 +12,7 @@ Perfect for users who type in multiple languages and want seamless input method 
 - **Smart mode switching**: English in normal/command mode, restore in insert mode
 - **macOS native**: Uses macOS Text Input Source APIs
 - **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
-- **Windows support**: Uses Windows Keyboard Layout APIs
+- **Windows support**: Controls IME status (doesn't change input methods)
 
 ## Installation
 
@@ -53,7 +53,7 @@ require('im-switch').setup({
   -- Default input method ID (platform-specific defaults)
   -- macOS: 'com.apple.keylayout.ABC'
   -- Linux: 'us' (XKB), 'xkb:us::eng' (IBus), 'keyboard-us' (Fcitx)
-  -- Windows: 'en-US' or '00000409' (layout ID)
+  -- Windows: 'en-US'
   default_input = nil, -- Uses platform default
 
   -- Auto-switch to default input in normal mode (default: true)
@@ -117,8 +117,6 @@ The plugin automatically handles these events:
 2. **Mode Changes**:
    - Normal/Command mode → switches to default input
    - Insert mode (from normal) → restores previous input method (if auto_restore is enabled)
-3. **Session Management**:
-   - Startup → switches to default input
 
 ## Finding Input Method IDs
 
@@ -258,7 +256,7 @@ make test
 ### Windows
 
 - **Neovim** (uses Neovim-specific APIs)
-- **Windows 7 or later** (uses Windows Keyboard Layout APIs)
+- **Windows 11** (controls IME status, doesn't change input methods)
 - **Go 1.19+** (for building the binary)
 
 ## License
