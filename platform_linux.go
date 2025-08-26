@@ -9,7 +9,7 @@ import (
 )
 
 // Linux input method switching using multiple backends
-// Supports: ibus, fcitx, fcitx5, rime
+// Supports: ibus, fcitx, fcitx5, xkb
 
 // detectInputMethod detects which input method framework is running
 func detectInputMethod() string {
@@ -41,8 +41,7 @@ func detectInputMethod() string {
 		return "fcitx"
 	}
 
-	// Default fallback
-	return "xkb"
+	return ""
 }
 
 func isProcessRunning(process string) bool {
@@ -63,7 +62,7 @@ func getCurrentInputSource() string {
 	case "xkb":
 		return getCurrentInputSourceXKB()
 	default:
-		return getCurrentInputSourceXKB()
+		return ""
 	}
 }
 
@@ -131,7 +130,7 @@ func getAllInputSources() []string {
 	case "xkb":
 		return getAllInputSourcesXKB()
 	default:
-		return getAllInputSourcesXKB()
+		return nil
 	}
 }
 
@@ -223,7 +222,7 @@ func setInputSource(sourceID string) bool {
 	case "xkb":
 		return setInputSourceXKB(sourceID)
 	default:
-		return setInputSourceXKB(sourceID)
+		return false
 	}
 }
 
