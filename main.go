@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 )
 
 func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  im-switch                    # Show current input source")
+	fmt.Println("  im-switch --status           # Show OS, binary path, backend, and current input source")
 	fmt.Println("  im-switch -l                 # List all input sources")
 	fmt.Println("  im-switch [input-source-id]  # Switch to input source")
 	fmt.Println("")
@@ -33,6 +35,52 @@ func printUsage() {
 	fmt.Printf("Platform: %s\n", runtime.GOOS)
 }
 
+func printStatus() int {
+	binaryPath, err := os.Executable()
+	if err != nil {
+		binaryPath = "unavailable"
+	}
+
+	fmt.Printf("OS: %s\n", runtime.GOOS)
+	fmt.Printf("WSL: %t\n", isWSL())
+	fmt.Printf("Binary: %s\n", binaryPath)
+	fmt.Printf("Backend: %s\n", getBackendStatus())
+
+	current := getCurrentInputSource()
+	if current == "" {
+		fmt.Println("Current input source: unavailable")
+		if runtime.GOOS == "linux" {
+			fmt.Println("Hint: install ibus, fcitx, fcitx5, or ensure setxkbmap is available")
+		}
+		return 1
+	}
+
+	fmt.Printf("Current input source: %s\n", current)
+	return 0
+}
+
+func isWSL() bool {
+	if runtime.GOOS != "linux" {
+		return false
+	}
+
+	if _, ok := os.LookupEnv("WSL_DISTRO_NAME"); ok {
+		return true
+	}
+
+	if _, ok := os.LookupEnv("WSL_INTEROP"); ok {
+		return true
+	}
+
+	content, err := os.ReadFile("/proc/sys/kernel/osrelease")
+	if err != nil {
+		return false
+	}
+
+	osrelease := strings.ToLower(string(content))
+	return strings.Contains(osrelease, "microsoft")
+}
+
 func main() {
 	args := os.Args[1:]
 
@@ -52,7 +100,11 @@ func main() {
 
 	case 1:
 		arg := args[0]
-		if arg == "-l" || arg == "--list" {
+		if arg == "--status" {
+			if code := printStatus(); code != 0 {
+				os.Exit(code)
+			}
+		} else if arg == "-l" || arg == "--list" {
 			sources := getAllInputSources()
 			if sources == nil {
 				if runtime.GOOS == "linux" {

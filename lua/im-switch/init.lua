@@ -1,15 +1,33 @@
 ---@type ImSwitch
 local M = {}
 
+---@return boolean
+local function is_wsl()
+	if vim.fn.has("wsl") == 1 then
+		return true
+	end
+
+	return vim.env.WSL_DISTRO_NAME ~= nil or vim.env.WSL_INTEROP ~= nil
+end
+
 ---@return ImSwitchConfig
 local function get_default_config()
 	local is_mac = vim.fn.has("mac") == 1 or vim.fn.has("macunix") == 1
+	local wsl = is_wsl()
 	local is_linux = vim.fn.has("unix") == 1 and not is_mac
 
 	if is_mac then
 		return {
 			binary_path = "im-switch",
 			default_input = "com.apple.keylayout.ABC",
+			auto_switch = true,
+			auto_restore = false,
+			debug = false,
+		}
+	elseif wsl then
+		return {
+			binary_path = "im-switch",
+			default_input = "en-US",
 			auto_switch = true,
 			auto_restore = false,
 			debug = false,
@@ -179,11 +197,26 @@ function M.setup(opts)
 		local plugin_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h:h")
 		local local_binary = plugin_dir .. "/build/im-switch"
 		local system_binary = "/usr/local/bin/im-switch"
+		local wsl_candidates = {
+			"/mnt/c/Tools/im-switch.exe",
+			"/mnt/c/Windows/im-switch.exe",
+			"/mnt/c/Program Files/im-switch/im-switch.exe",
+		}
 
 		if vim.fn.executable(local_binary) == 1 then
 			config.binary_path = local_binary
 		elseif vim.fn.executable(system_binary) == 1 then
 			config.binary_path = system_binary
+		elseif is_wsl() then
+			for _, candidate in ipairs(wsl_candidates) do
+				if vim.fn.executable(candidate) == 1 then
+					config.binary_path = candidate
+					break
+				end
+			end
+			if not config.binary_path or config.binary_path == "" then
+				config.binary_path = "im-switch"
+			end
 		else
 			config.binary_path = "im-switch" -- fallback to PATH
 		end

@@ -280,3 +280,6 @@ func pressCtrlKey(vkCode uint32) {
 	keybd_event.Call(uintptr(VK_CONTROL), 0, uintptr(KEYEVENTF_KEYUP), 0)
 }
 
+func getBackendStatus() string {
+	return "windows-ime"
+}

@@ -1,6 +1,7 @@
 BINARY_NAME=im-switch
 BUILD_DIR=build
 INSTALL_DIR=/usr/local/bin
+WSL_WIN_OUT ?= /mnt/c/Tools/im-switch.exe
 
 # Detect operating system
 UNAME_S := $(shell uname -s 2>/dev/null || echo "Windows")
@@ -26,7 +27,7 @@ endif
 
 # Go source files
 GO_SOURCES := $(wildcard *.go)
-.PHONY: build clean install uninstall test force-build
+.PHONY: build clean install uninstall test force-build build-release run build-wsl-win test-wsl-win
 
 # Build only if Go sources are newer than the binary or if binary doesn't exist
 $(BINARY_NAME): $(GO_SOURCES) go.mod
@@ -69,6 +70,16 @@ else
 	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
 endif
 
+build-wsl-win: $(GO_SOURCES) go.mod
+	@mkdir -p "$(dir $(WSL_WIN_OUT))"
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$(WSL_WIN_OUT)" .
+	@echo "Built Windows binary at $(WSL_WIN_OUT)"
+
+test-wsl-win: build-wsl-win
+	"$(WSL_WIN_OUT)"
+	"$(WSL_WIN_OUT)" -l
+	"$(WSL_WIN_OUT)" -h
+
 install: build
 	$(COPY) $(BUILD_DIR)/$(BINARY_NAME) $(INSTALL_DIR)/im-switch
 	chmod +x $(INSTALL_DIR)/im-switch
@@ -95,11 +106,18 @@ ifeq ($(DETECTED_OS),Windows)
 	@echo "Testing help:"
 	$(EXEC_PREFIX)$(BUILD_DIR)$(PATH_SEP)$(BINARY_NAME).exe -h
 else
-	$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME)
-	@echo "\nTesting list input sources:"
-	$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) -l
-	@echo "\nTesting help:"
-	$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) -h
+	@if $(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) --status >/dev/null 2>&1; then \
+		$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME); \
+		echo "\nTesting list input sources:"; \
+		$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) -l; \
+		echo "\nTesting help:"; \
+		$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) -h; \
+	else \
+		echo "No active Linux input method backend detected; skipping runtime IM smoke tests."; \
+		echo "Use 'make test-wsl-win' in WSL when validating Windows IME flow."; \
+		echo "\nTesting help:"; \
+		$(EXEC_PREFIX)$(BUILD_DIR)/$(BINARY_NAME) -h; \
+	fi
 endif
 
 run: build

@@ -146,3 +146,7 @@ func setInputSource(sourceID string) bool {
 
 	return bool(C.setInputSource(cfStr))
 }
+
+func getBackendStatus() string {
+	return "macos-tis"
+}

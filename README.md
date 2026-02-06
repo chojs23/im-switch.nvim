@@ -58,6 +58,7 @@ require('im-switch').setup({
 
   -- Default input method ID (platform-specific defaults)
   -- macOS: 'com.apple.keylayout.ABC'
+  -- WSL: 'en-US'
   -- Linux: 'us' (XKB), 'xkb:us::eng' (IBus), 'keyboard-us' (Fcitx)
   -- Windows: 'en-US'
   default_input = nil, -- Uses platform default
@@ -131,6 +132,9 @@ To discover available input method IDs on your system:
 ```bash
 # Build the binary first
 make build
+
+# Show runtime status (OS, WSL, binary path, backend, current input source)
+./build/im-switch --status
 
 # List all input methods
 ./build/im-switch -l
@@ -264,6 +268,48 @@ make test
 - **Neovim** (uses Neovim-specific APIs)
 - **Windows 11** (controls IME status, doesn't change input methods)
 - **Go 1.19+** (for building the binary)
+
+### WSL
+
+- **Neovim in WSL**
+- **Go 1.19+ in WSL** (to build Windows binary)
+- A Windows path mounted in WSL (for example `/mnt/c/Tools`)
+
+For common WSL + Windows Terminal usage, use a Windows executable from WSL.
+
+```bash
+# Build a Windows binary from WSL into Windows filesystem
+make build-wsl-win
+
+# Verify from WSL
+/mnt/c/Tools/im-switch.exe
+/mnt/c/Tools/im-switch.exe en-US
+/mnt/c/Tools/im-switch.exe -l
+
+# Or run the built-in verification target
+make test-wsl-win
+```
+
+You can override the output path:
+
+```bash
+make build-wsl-win WSL_WIN_OUT=/mnt/c/Users/<you>/bin/im-switch.exe
+```
+
+WSL auto-detection prefers these paths when `binary_path` is not set:
+
+- `/mnt/c/Tools/im-switch.exe`
+- `/mnt/c/Windows/im-switch.exe`
+- `/mnt/c/Program Files/im-switch/im-switch.exe`
+
+You can still set it explicitly:
+
+```lua
+require('im-switch').setup({
+  binary_path = '/mnt/c/Tools/im-switch.exe',
+  default_input = 'en-US',
+})
+```
 
 ## License
 
