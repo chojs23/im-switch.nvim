@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
+  build-assets:
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build asset
+        id: build
+        shell: bash
+        run: |
+          if [ "${RUNNER_OS}" = "macOS" ]; then
+            export CGO_ENABLED=1
+          else
+            export CGO_ENABLED=0
+          fi
+
+          binary_name="im-switch"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            binary_name="${binary_name}.exe"
+          fi
+
+          go build -o "${binary_name}" .
+
+          asset_os=$(echo "${RUNNER_OS}" | tr '[:upper:]' '[:lower:]')
+          asset_name="im-switch-${asset_os}"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            asset_name="${asset_name}.exe"
+          fi
+
+          mv "${binary_name}" "${asset_name}"
+          if [ "${RUNNER_OS}" != "Windows" ]; then
+            chmod +x "${asset_name}"
+          fi
+
+          echo "asset_path=${asset_name}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.build.outputs.asset_path }}

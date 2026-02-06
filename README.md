@@ -16,6 +16,12 @@ Perfect for users who type in multiple languages and want seamless input method 
 
 ## Installation
 
+### Using Homebrew (CLI)
+
+```bash
+brew install chojs23/tap/im-switch
+```
+
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
