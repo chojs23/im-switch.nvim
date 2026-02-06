@@ -144,21 +144,24 @@ func setInputSource(sourceID string) bool {
 	return setIMEStatus(sourceID)
 }
 
-func setIMEStatus(sourceID string) bool {
-	// Determine if the source is a CJK language
-	isCJK := cjkLanguages[sourceID]
+func shouldOpenIMEForSourceID(sourceID string) bool {
+	normalized := strings.TrimSpace(sourceID)
+	isCJK := cjkLanguages[normalized]
 
-	// Also check for partial matches (e.g., "ja" for Japanese)
 	if !isCJK {
 		for lang := range cjkLanguages {
-			if strings.HasPrefix(sourceID, strings.Split(lang, "-")[0]) {
+			if strings.HasPrefix(normalized, strings.Split(lang, "-")[0]) {
 				isCJK = true
 				break
 			}
 		}
 	}
 
-	return setIMEOpenStatus(isCJK)
+	return isCJK
+}
+
+func setIMEStatus(sourceID string) bool {
+	return setIMEOpenStatus(shouldOpenIMEForSourceID(sourceID))
 }
 
 func setIMEOpenStatus(open bool) bool {
@@ -178,7 +181,14 @@ func setIMEOpenStatus(open bool) bool {
 		}
 	}
 
-	return isOpen == open
+	for i := 0; i < 5; i++ {
+		if (getDetailedIMEStatus() == "open") == open {
+			return true
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	return false
 }
 
 func getDetailedIMEStatus() string {

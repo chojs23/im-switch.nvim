@@ -27,7 +27,7 @@ brew install chojs23/tap/im-switch
 ```lua
 {
   "chojs23/im-switch.nvim",
-  build = "make build",
+  build = "make build", -- or "make build-wsl-win" for WSL
   config = function()
     require('im-switch').setup({
       -- Configuration options (see below)
@@ -45,9 +45,15 @@ use {
   config = function()
     require('im-switch').setup()
   end
-  run = 'make build',
+  run = 'make build', -- or 'make build-wsl-win' for WSL
 }
 ```
+
+### WSL build note
+
+- In WSL, `make build` creates a Linux binary.
+- For Windows IME control from WSL, build the Windows executable with `make build-wsl-win`.
+- If needed, set `binary_path` explicitly to your Windows path (for example `/mnt/c/Tools/im-switch.exe`).
 
 ## Configuration
 
@@ -203,6 +209,24 @@ make build
 - `00000404` - Chinese (Traditional)
 - `00000419` - Russian
 
+**Windows IME mode note**:
+
+- `im-switch -l` shows installed keyboard layouts.
+- On Windows, `im-switch [id]` can also be used as an IME mode request:
+  - `en-US` requests English mode (IME off)
+  - `zh-CN` / `ja-JP` / `ko-KR` request IME on
+- This is useful when you keep only one installed layout (for example only `zh-CN`) and still want to toggle between English and CJK input mode.
+
+Example (single `zh-CN` layout environment):
+
+```bash
+im-switch -l
+# zh-CN
+
+im-switch en-US   # English mode (IME off)
+im-switch zh-CN   # Chinese mode (IME on)
+```
+
 ## Building Manually
 
 If you need to build the binary manually:
@@ -309,6 +333,19 @@ require('im-switch').setup({
   binary_path = '/mnt/c/Tools/im-switch.exe',
   default_input = 'en-US',
 })
+```
+
+Minimal WSL setup (copy and paste):
+
+```lua
+{
+  "chojs23/im-switch.nvim",
+  build = "make build-wsl-win",
+  opts = {
+    binary_path = "/mnt/c/Tools/im-switch.exe",
+    default_input = "en-US",
+  },
+}
 ```
 
 ## License

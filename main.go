@@ -25,6 +25,7 @@ func printUsage() {
 		fmt.Println("  im-switch 00000409              # English (United States) by layout ID")
 		fmt.Println("  im-switch de-DE                 # German (Germany)")
 		fmt.Println("  im-switch ja-JP                 # Japanese")
+		fmt.Println("  # Note: Windows can use IDs as IME mode requests (en-US=IME off, zh-CN/ja-JP/ko-KR=IME on)")
 	} else {
 		fmt.Println("  # Linux")
 		fmt.Println("  im-switch us                    # XKB layout")
@@ -123,7 +124,12 @@ func main() {
 		} else {
 			if !setInputSource(arg) {
 				fmt.Fprintf(os.Stderr, "Error: Could not set input source to '%s'\n", arg)
-				fmt.Fprintf(os.Stderr, "Use 'im-switch -l' to see available input sources\n")
+				if runtime.GOOS == "windows" {
+					fmt.Fprintf(os.Stderr, "On Windows, this controls IME mode as well as input IDs\n")
+					fmt.Fprintf(os.Stderr, "Try 'en-US' for English mode (IME off) and 'zh-CN'/'ja-JP'/'ko-KR' for IME on\n")
+				} else {
+					fmt.Fprintf(os.Stderr, "Use 'im-switch -l' to see available input sources\n")
+				}
 				os.Exit(1)
 			}
 		}
