@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -18,6 +19,8 @@ var (
 	getWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	getKeyboardLayout        = user32.NewProc("GetKeyboardLayout")
 	getKeyboardLayoutList    = user32.NewProc("GetKeyboardLayoutList")
+	loadKeyboardLayoutW      = user32.NewProc("LoadKeyboardLayoutW")
+	activateKeyboardLayout   = user32.NewProc("ActivateKeyboardLayout")
 	immGetDefaultIMEWnd      = imm32.NewProc("ImmGetDefaultIMEWnd")
 	sendMessageA             = user32.NewProc("SendMessageA")
 )
@@ -30,6 +33,8 @@ const (
 	IMC_GETOPENSTATUS         = 0x0005
 	IMC_SETOPENSTATUS         = 0x0006
 	IME_CMODE_NATIVE          = 0x0001
+	KLF_ACTIVATE              = 0x00000001
+	KLF_SUBSTITUTE_OK         = 0x00000002
 )
 
 // HKL represents a handle to keyboard layout
@@ -136,14 +141,16 @@ func setInputSource(sourceID string) bool {
 }
 
 func switchLayoutIfAvailable(sourceID string) bool {
-	targetLayout, hkl, found := findInstalledLayout(sourceID)
+	targetLayout, hkl, found := resolveTargetLayout(sourceID)
 	if !found {
-		return true
+		return false
 	}
+
+	activateKeyboardLayout.Call(uintptr(hkl), 0)
 
 	foregroundWnd, _, _ := getForegroundWindow.Call()
 	if foregroundWnd == 0 {
-		return false
+		return strings.EqualFold(getCurrentInputSource(), targetLayout)
 	}
 
 	sendMessageA.Call(
@@ -153,11 +160,89 @@ func switchLayoutIfAvailable(sourceID string) bool {
 		uintptr(hkl),
 	)
 
-	for i := 0; i < 5; i++ {
-		if strings.EqualFold(getCurrentInputSource(), targetLayout) {
+	for i := 0; i < 10; i++ {
+		if isCurrentLayoutMatchTarget(sourceID, targetLayout) {
 			return true
 		}
 		time.Sleep(20 * time.Millisecond)
+	}
+
+	return false
+}
+
+func resolveTargetLayout(sourceID string) (string, HKL, bool) {
+	if targetLayout, hkl, found := findInstalledLayout(sourceID); found {
+		return targetLayout, hkl, true
+	}
+
+	hkl, ok := loadKeyboardLayoutBySourceID(sourceID)
+	if !ok {
+		return "", 0, false
+	}
+
+	return getLayoutName(hkl), hkl, true
+}
+
+func loadKeyboardLayoutBySourceID(sourceID string) (HKL, bool) {
+	klid, ok := normalizeKLID(sourceID)
+	if !ok {
+		return 0, false
+	}
+
+	ptr, err := syscall.UTF16PtrFromString(klid)
+	if err != nil {
+		return 0, false
+	}
+
+	hkl, _, _ := loadKeyboardLayoutW.Call(
+		uintptr(unsafe.Pointer(ptr)),
+		uintptr(KLF_ACTIVATE|KLF_SUBSTITUTE_OK),
+	)
+	if hkl == 0 {
+		return 0, false
+	}
+
+	return HKL(hkl), true
+}
+
+func normalizeKLID(sourceID string) (string, bool) {
+	normalized := strings.TrimSpace(sourceID)
+	if normalized == "" {
+		return "", false
+	}
+
+	if len(normalized) == 8 && isHexString(normalized) {
+		return strings.ToUpper(normalized), true
+	}
+
+	if strings.HasPrefix(strings.ToLower(normalized), "0x") {
+		v, err := strconv.ParseUint(normalized[2:], 16, 32)
+		if err != nil {
+			return "", false
+		}
+		return fmt.Sprintf("%08X", uint32(v)), true
+	}
+
+	if langID, ok := parseRequestedLangID(normalized); ok {
+		return fmt.Sprintf("%08X", langID), true
+	}
+
+	return "", false
+}
+
+func isHexString(s string) bool {
+	_, err := strconv.ParseUint(s, 16, 32)
+	return err == nil
+}
+
+func isOfficialLayoutCode(sourceID string) bool {
+	normalized := strings.TrimSpace(sourceID)
+	if len(normalized) == 8 && isHexString(normalized) {
+		return true
+	}
+
+	if strings.HasPrefix(strings.ToLower(normalized), "0x") {
+		return isHexString(normalized[2:])
 	}
 
 	return false
@@ -182,7 +267,7 @@ func findInstalledLayout(sourceID string) (string, HKL, bool) {
 
 	for _, hkl := range layouts[:ret] {
 		layout := getLayoutName(hkl)
-		if isSourceMatchLayout(normalized, layout) {
+		if isSourceMatchLayout(normalized, layout) || isSourceMatchHKL(normalized, hkl) {
 			return layout, hkl, true
 		}
 	}
@@ -204,6 +289,72 @@ func isSourceMatchLayout(sourceID string, layout string) bool {
 	return false
 }
 
+func isSourceMatchHKL(sourceID string, hkl HKL) bool {
+	requestedLangID, ok := parseRequestedLangID(sourceID)
+	if !ok {
+		return false
+	}
+
+	currentLangID := uint32(hkl) & 0xFFFF
+	return currentLangID == requestedLangID
+}
+
+func parseRequestedLangID(sourceID string) (uint32, bool) {
+	normalized := strings.TrimSpace(sourceID)
+	if normalized == "" {
+		return 0, false
+	}
+
+	if strings.HasPrefix(strings.ToLower(normalized), "0x") {
+		v, err := strconv.ParseUint(normalized[2:], 16, 32)
+		if err != nil {
+			return 0, false
+		}
+		return uint32(v) & 0xFFFF, true
+	}
+
+	if len(normalized) == 8 && isHexString(normalized) {
+		v, err := strconv.ParseUint(normalized, 16, 32)
+		if err != nil {
+			return 0, false
+		}
+		return uint32(v) & 0xFFFF, true
+	}
+
+	for langID, name := range layoutNames {
+		if strings.EqualFold(name, normalized) {
+			return langID, true
+		}
+	}
+
+	return 0, false
+}
+
+func isCurrentLayoutMatchTarget(sourceID string, targetLayout string) bool {
+	current := getCurrentInputSource()
+	if strings.EqualFold(current, targetLayout) {
+		return true
+	}
+
+	if isSourceMatchLayout(sourceID, current) {
+		return true
+	}
+
+	return parseMatchByLangID(sourceID, current)
+}
+
+func parseMatchByLangID(sourceID string, currentLayout string) bool {
+	requestedLangID, ok := parseRequestedLangID(sourceID)
+	if !ok {
+		return false
+	}
+	currentLangID, ok := parseRequestedLangID(currentLayout)
+	if !ok {
+		return false
+	}
+	return requestedLangID == currentLangID
+}
+
 func isRequestSupportedForLayout(currentLayout string, requestedSource string) bool {
 	current := strings.ToLower(strings.TrimSpace(currentLayout))
 	requested := strings.ToLower(strings.TrimSpace(requestedSource))
@@ -211,8 +362,16 @@ func isRequestSupportedForLayout(currentLayout string, requestedSource string) b
 		return false
 	}
 
+	if isOfficialLayoutCode(requestedSource) {
+		return true
+	}
+
 	if requested == "en-us" {
 		return true
+	}
+
+	if requestedLangID, ok := parseRequestedLangID(requested); ok {
+		requested = strings.ToLower(getLayoutName(HKL(requestedLangID)))
 	}
 
 	if requested == current {

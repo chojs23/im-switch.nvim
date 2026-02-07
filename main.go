@@ -135,6 +135,7 @@ func main() {
 				if runtime.GOOS == "windows" {
 					fmt.Fprintf(os.Stderr, "On Windows, this controls IME mode as well as input IDs\n")
 					fmt.Fprintf(os.Stderr, "Only the active layout language and 'en-US' are supported\n")
+					fmt.Fprintf(os.Stderr, "Official layout codes (for example '00000804' or '0x804') request keyboard layout switching\n")
 					fmt.Fprintf(os.Stderr, "Try 'en-US' for English mode (IME off) and 'zh-CN'/'ja-JP'/'ko-KR' for IME on\n")
 				} else {
 					fmt.Fprintf(os.Stderr, "Use 'im-switch -l' to see available input sources\n")

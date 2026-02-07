@@ -185,7 +185,7 @@ make build
 
 #### Windows
 
-**Keyboard Layout Names**:
+**Keyboard layout names**:
 
 - `en-US` - English (United States)
 - `en-GB` - English (United Kingdom)
@@ -197,7 +197,7 @@ make build
 - `zh-TW` - Chinese (Traditional)
 - `ru-RU` - Russian
 
-**Layout IDs** (alternative format):
+**Official layout codes (KLID / hex)**:
 
 - `00000409` - English (United States)
 - `00000809` - English (United Kingdom)
@@ -209,23 +209,39 @@ make build
 - `00000404` - Chinese (Traditional)
 - `00000419` - Russian
 
-**Windows IME mode note**:
+You can also use `0x` style values:
+
+- `0x409` - English (United States)
+- `0x411` - Japanese
+- `0x412` - Korean
+- `0x804` - Chinese (Simplified)
+
+**Windows behavior**:
 
 - `im-switch -l` shows installed keyboard layouts.
-- On Windows, `im-switch [id]` can also be used as an IME mode request:
+- `im-switch [id]` tries to switch the active layout first.
+- Then IME mode is applied:
   - `en-US` requests English mode (IME off)
   - `zh-CN` / `ja-JP` / `ko-KR` request IME on
-- On Windows, requests are validated by active layout language: only the current layout language and `en-US` are accepted.
-- This is useful when you keep only one installed layout (for example only `zh-CN`) and still want to toggle between English and CJK input mode.
+- For language tags, only the active layout language and `en-US` are accepted.
+  - Example: active `zh-CN` allows `zh-CN` and `en-US`, rejects `ja-JP`.
+- Official layout codes trigger keyboard layout switching, regardless of active layout language.
+  - Example: `00000804` or `0x804` switches to Chinese layout even when active layout is not Chinese.
 
-Example (single `zh-CN` layout environment):
+Examples:
 
 ```bash
+# List installed layouts
 im-switch -l
-# zh-CN
 
+# Language-tag mode control (active zh-CN layout)
 im-switch en-US   # English mode (IME off)
 im-switch zh-CN   # Chinese mode (IME on)
+im-switch ja-JP   # Error (different language)
+
+# Official layout code switch (always accepted)
+im-switch 00000804
+im-switch 0x411
 ```
 
 ## Building Manually
@@ -308,12 +324,20 @@ make build-wsl-win
 
 # Verify from WSL
 /mnt/c/Tools/im-switch.exe
+/mnt/c/Tools/im-switch.exe --status
 /mnt/c/Tools/im-switch.exe en-US
+/mnt/c/Tools/im-switch.exe 00000804
 /mnt/c/Tools/im-switch.exe -l
 
 # Or run the built-in verification target
 make test-wsl-win
 ```
+
+WSL runtime notes:
+
+- `--status` prints `OS: windows` when running the Windows binary.
+- `WSL: true` is reported when the process is detected as being launched from WSL.
+- Layout changes still depend on layouts installed in Windows.
 
 You can override the output path:
 
