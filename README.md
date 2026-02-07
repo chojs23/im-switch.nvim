@@ -215,7 +215,7 @@ make build
 - On Windows, `im-switch [id]` can also be used as an IME mode request:
   - `en-US` requests English mode (IME off)
   - `zh-CN` / `ja-JP` / `ko-KR` request IME on
-- When active layout is `ko-KR`, only `ko-KR` and `en-US` are accepted.
+- On Windows, requests are validated by active layout language: only the current layout language and `en-US` are accepted.
 - This is useful when you keep only one installed layout (for example only `zh-CN`) and still want to toggle between English and CJK input mode.
 
 Example (single `zh-CN` layout environment):

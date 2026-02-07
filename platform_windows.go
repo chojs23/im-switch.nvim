@@ -205,12 +205,36 @@ func isSourceMatchLayout(sourceID string, layout string) bool {
 }
 
 func isRequestSupportedForLayout(currentLayout string, requestedSource string) bool {
-	if !strings.EqualFold(strings.TrimSpace(currentLayout), "ko-KR") {
+	current := strings.ToLower(strings.TrimSpace(currentLayout))
+	requested := strings.ToLower(strings.TrimSpace(requestedSource))
+	if current == "" || requested == "" {
+		return false
+	}
+
+	if requested == "en-us" {
 		return true
 	}
 
-	normalizedRequest := strings.TrimSpace(requestedSource)
-	return strings.EqualFold(normalizedRequest, "ko-KR") || strings.EqualFold(normalizedRequest, "en-US")
+	if requested == current {
+		return true
+	}
+
+	currentLang := primaryLanguage(current)
+	requestedLang := primaryLanguage(requested)
+	if currentLang == "" || requestedLang == "" {
+		return false
+	}
+
+	return currentLang == requestedLang
+}
+
+func primaryLanguage(sourceID string) string {
+	normalized := strings.ToLower(strings.TrimSpace(sourceID))
+	if normalized == "" {
+		return ""
+	}
+	parts := strings.SplitN(normalized, "-", 2)
+	return parts[0]
 }
 
 func shouldOpenIMEForSourceID(sourceID string) bool {
