@@ -11,42 +11,25 @@ import (
 )
 
 var (
-	user32      = syscall.NewLazyDLL("user32.dll")
-	imm32       = syscall.NewLazyDLL("imm32.dll")
-	kernel32    = syscall.NewLazyDLL("kernel32.dll")
-	keybd_event = user32.NewProc("keybd_event")
+	user32 = syscall.NewLazyDLL("user32.dll")
+	imm32  = syscall.NewLazyDLL("imm32.dll")
 
 	getForegroundWindow      = user32.NewProc("GetForegroundWindow")
 	getWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
 	getKeyboardLayout        = user32.NewProc("GetKeyboardLayout")
 	getKeyboardLayoutList    = user32.NewProc("GetKeyboardLayoutList")
-	getLocaleInfoW           = kernel32.NewProc("GetLocaleInfoW")
 	immGetDefaultIMEWnd      = imm32.NewProc("ImmGetDefaultIMEWnd")
-	immGetOpenStatus         = imm32.NewProc("ImmGetOpenStatus")
-	immSetOpenStatus         = imm32.NewProc("ImmSetOpenStatus")
-	immGetContext            = imm32.NewProc("ImmGetContext")
-	immReleaseContext        = imm32.NewProc("ImmReleaseContext")
-	sendMessageW             = user32.NewProc("SendMessageW")
+	sendMessageA             = user32.NewProc("SendMessageA")
 )
 
 const (
-	LOCALE_SENGLANGUAGE = 0x1001
-)
-
-const (
-	WM_IME_CONTROL    = 0x0283
-	IMC_GETOPENSTATUS = 0x0005
-)
-
-const (
-	VK_HANGUL = 0x15
-
-	VK_KANJI = 0x19
-	VK_KANA  = 0x15
-
-	VK_SHIFT = 0x10
-
-	KEYEVENTF_KEYUP = 0x0002
+	WM_IME_CONTROL            = 0x0283
+	WM_INPUTLANGCHANGEREQUEST = 0x0050
+	IMC_GETCONVERSIONMODE     = 0x0001
+	IMC_SETCONVERSIONMODE     = 0x0002
+	IMC_GETOPENSTATUS         = 0x0005
+	IMC_SETOPENSTATUS         = 0x0006
+	IME_CMODE_NATIVE          = 0x0001
 )
 
 // HKL represents a handle to keyboard layout
@@ -139,9 +122,95 @@ func getAllInputSources() []string {
 }
 
 func setInputSource(sourceID string) bool {
-	// On Windows, we don't change the keyboard layout
-	// Instead, we control the IME status based on the source language
+	currentInputSource := getCurrentInputSource()
+	if !isRequestSupportedForLayout(currentInputSource, sourceID) {
+		return false
+	}
+
+	if !switchLayoutIfAvailable(sourceID) {
+		return false
+	}
+
+	// Windows request maps to layout and IME mode control.
 	return setIMEStatus(sourceID)
+}
+
+func switchLayoutIfAvailable(sourceID string) bool {
+	targetLayout, hkl, found := findInstalledLayout(sourceID)
+	if !found {
+		return true
+	}
+
+	foregroundWnd, _, _ := getForegroundWindow.Call()
+	if foregroundWnd == 0 {
+		return false
+	}
+
+	sendMessageA.Call(
+		foregroundWnd,
+		WM_INPUTLANGCHANGEREQUEST,
+		0,
+		uintptr(hkl),
+	)
+
+	for i := 0; i < 5; i++ {
+		if strings.EqualFold(getCurrentInputSource(), targetLayout) {
+			return true
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	return false
+}
+
+func findInstalledLayout(sourceID string) (string, HKL, bool) {
+	normalized := strings.TrimSpace(sourceID)
+	if normalized == "" {
+		return "", 0, false
+	}
+
+	count, _, _ := getKeyboardLayoutList.Call(0, 0)
+	if count == 0 {
+		return "", 0, false
+	}
+
+	layouts := make([]HKL, count)
+	ret, _, _ := getKeyboardLayoutList.Call(uintptr(count), uintptr(unsafe.Pointer(&layouts[0])))
+	if ret == 0 {
+		return "", 0, false
+	}
+
+	for _, hkl := range layouts[:ret] {
+		layout := getLayoutName(hkl)
+		if isSourceMatchLayout(normalized, layout) {
+			return layout, hkl, true
+		}
+	}
+
+	return "", 0, false
+}
+
+func isSourceMatchLayout(sourceID string, layout string) bool {
+	if strings.EqualFold(sourceID, layout) {
+		return true
+	}
+
+	sourceParts := strings.SplitN(strings.ToLower(strings.TrimSpace(sourceID)), "-", 2)
+	layoutParts := strings.SplitN(strings.ToLower(strings.TrimSpace(layout)), "-", 2)
+	if len(sourceParts) > 0 && len(layoutParts) > 0 && sourceParts[0] != "" {
+		return sourceParts[0] == layoutParts[0]
+	}
+
+	return false
+}
+
+func isRequestSupportedForLayout(currentLayout string, requestedSource string) bool {
+	if !strings.EqualFold(strings.TrimSpace(currentLayout), "ko-KR") {
+		return true
+	}
+
+	normalizedRequest := strings.TrimSpace(requestedSource)
+	return strings.EqualFold(normalizedRequest, "ko-KR") || strings.EqualFold(normalizedRequest, "en-US")
 }
 
 func shouldOpenIMEForSourceID(sourceID string) bool {
@@ -161,28 +230,113 @@ func shouldOpenIMEForSourceID(sourceID string) bool {
 }
 
 func setIMEStatus(sourceID string) bool {
-	return setIMEOpenStatus(shouldOpenIMEForSourceID(sourceID))
+	open := shouldOpenIMEForSourceID(sourceID)
+	if !setIMEOpenStatus(open) {
+		return false
+	}
+
+	if shouldForceNativeMode(sourceID) {
+		return setNativeConversionMode(true)
+	}
+
+	return true
+}
+
+func shouldForceNativeMode(sourceID string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(sourceID))
+	return normalized == "ko-kr" || normalized == "zh-cn" || normalized == "zh-tw"
 }
 
 func setIMEOpenStatus(open bool) bool {
-	isOpen := getDetailedIMEStatus() == "open"
+	for i := 0; i < 5; i++ {
+		imeWnd, ok := getIMEWindow()
+		if !ok {
+			return false
+		}
 
-	currentInputSource := getCurrentInputSource()
+		if !setIMEOpenStatusForWindow(imeWnd, open) {
+			return false
+		}
 
-	if (open && !isOpen) || (!open && isOpen) {
-		if currentInputSource == "ja-JP" {
-			toggleJapanese()
+		if isIMEOpenForWindow(imeWnd) == open {
+			return true
 		}
-		if currentInputSource == "ko-KR" {
-			toggleKorean()
-		}
-		if currentInputSource == "zh-CN" || currentInputSource == "zh-TW" {
-			toggleChinese()
-		}
+
+		time.Sleep(20 * time.Millisecond)
 	}
 
+	return false
+}
+
+func getIMEWindow() (uintptr, bool) {
+	foregroundWnd, _, _ := getForegroundWindow.Call()
+	if foregroundWnd == 0 {
+		return 0, false
+	}
+
+	imeWnd, _, _ := immGetDefaultIMEWnd.Call(foregroundWnd)
+	if imeWnd == 0 {
+		return 0, false
+	}
+
+	return imeWnd, true
+}
+
+func setIMEOpenStatusForWindow(imeWnd uintptr, open bool) bool {
+	var target uintptr
+	if open {
+		target = 1
+	}
+
+	ret, _, _ := sendMessageA.Call(
+		imeWnd,
+		WM_IME_CONTROL,
+		IMC_SETOPENSTATUS,
+		target,
+	)
+
+	// Some IMEs return 0 even when set succeeds, so verify via GETOPENSTATUS.
+	_ = ret
+	return true
+}
+
+func isIMEOpenForWindow(imeWnd uintptr) bool {
+	status, _, _ := sendMessageA.Call(
+		imeWnd,
+		WM_IME_CONTROL,
+		IMC_GETOPENSTATUS,
+		0,
+	)
+	return status != 0
+}
+
+func setNativeConversionMode(enabled bool) bool {
+	imeWnd, ok := getIMEWindow()
+	if !ok {
+		return false
+	}
+
+	var target uintptr
+	if enabled {
+		target = IME_CMODE_NATIVE
+	}
+
+	sendMessageA.Call(
+		imeWnd,
+		WM_IME_CONTROL,
+		IMC_SETCONVERSIONMODE,
+		target,
+	)
+
 	for i := 0; i < 5; i++ {
-		if (getDetailedIMEStatus() == "open") == open {
+		current, _, _ := sendMessageA.Call(
+			imeWnd,
+			WM_IME_CONTROL,
+			IMC_GETCONVERSIONMODE,
+			0,
+		)
+		nativeOn := (current & IME_CMODE_NATIVE) != 0
+		if nativeOn == enabled {
 			return true
 		}
 		time.Sleep(20 * time.Millisecond)
@@ -192,102 +346,15 @@ func setIMEOpenStatus(open bool) bool {
 }
 
 func getDetailedIMEStatus() string {
-	foregroundWnd, _, _ := getForegroundWindow.Call()
-	if foregroundWnd == 0 {
+	imeWnd, ok := getIMEWindow()
+	if !ok {
 		return "Unknown"
 	}
 
-	var processId uintptr
-	threadId, _, _ := getWindowThreadProcessId.Call(foregroundWnd, uintptr(unsafe.Pointer(&processId)))
-	if threadId == 0 {
-		return "Unknown"
-	}
-
-	keyboardLayout, _, _ := getKeyboardLayout.Call(threadId)
-	if keyboardLayout == 0 {
-		return "Unknown"
-	}
-
-	imeWnd, _, _ := immGetDefaultIMEWnd.Call(foregroundWnd)
-	imeOpen := false
-	if imeWnd != 0 {
-		status, _, _ := sendMessageW.Call(
-			imeWnd,
-			WM_IME_CONTROL,
-			IMC_GETOPENSTATUS,
-			0,
-		)
-		imeOpen = (status != 0)
-	}
-
-	if imeOpen {
+	if isIMEOpenForWindow(imeWnd) {
 		return "open"
-	} else {
-		return "closed"
 	}
-}
-
-func toggleKorean() {
-	pressKey(VK_HANGUL)
-}
-
-func toggleJapanese() {
-	pressKey(VK_KANJI)
-
-	// If fails try using Kana key
-	// pressAltKey(0xC0)
-}
-
-func toggleChinese() {
-	pressKey(VK_SHIFT)
-}
-
-func pressKey(vkCode uint32) {
-	keybd_event.Call(
-		uintptr(vkCode),
-		0,
-		0,
-		0,
-	)
-
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(
-		uintptr(vkCode),
-		0,
-		uintptr(KEYEVENTF_KEYUP),
-		0,
-	)
-}
-
-func pressAltKey(vkCode uint32) {
-	const VK_MENU = 0x12
-
-	keybd_event.Call(uintptr(VK_MENU), 0, 0, 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(vkCode), 0, 0, 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(vkCode), 0, uintptr(KEYEVENTF_KEYUP), 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(VK_MENU), 0, uintptr(KEYEVENTF_KEYUP), 0)
-}
-
-func pressCtrlKey(vkCode uint32) {
-	const VK_CONTROL = 0x11
-
-	keybd_event.Call(uintptr(VK_CONTROL), 0, 0, 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(vkCode), 0, 0, 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(vkCode), 0, uintptr(KEYEVENTF_KEYUP), 0)
-	time.Sleep(10 * time.Millisecond)
-
-	keybd_event.Call(uintptr(VK_CONTROL), 0, uintptr(KEYEVENTF_KEYUP), 0)
+	return "closed"
 }
 
 func getBackendStatus() string {

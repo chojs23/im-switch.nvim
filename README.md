@@ -12,7 +12,7 @@ Perfect for users who type in multiple languages and want seamless input method 
 - **Smart mode switching**: English in normal/command mode, restore in insert mode
 - **macOS native**: Uses macOS Text Input Source APIs
 - **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
-- **Windows support**: Controls IME status (doesn't change input methods)
+- **Windows support**: Switches installed layouts and CJK IME mode
 
 ## Installation
 
@@ -215,6 +215,7 @@ make build
 - On Windows, `im-switch [id]` can also be used as an IME mode request:
   - `en-US` requests English mode (IME off)
   - `zh-CN` / `ja-JP` / `ko-KR` request IME on
+- When active layout is `ko-KR`, only `ko-KR` and `en-US` are accepted.
 - This is useful when you keep only one installed layout (for example only `zh-CN`) and still want to toggle between English and CJK input mode.
 
 Example (single `zh-CN` layout environment):
@@ -290,7 +291,7 @@ make test
 ### Windows
 
 - **Neovim** (uses Neovim-specific APIs)
-- **Windows 11** (controls IME status, doesn't change input methods)
+- **Windows 11** (switches installed layouts and CJK IME mode)
 - **Go 1.19+** (for building the binary)
 
 ### WSL
