@@ -61,19 +61,27 @@ func printStatus() int {
 }
 
 func isWSL() bool {
-	if runtime.GOOS != "linux" {
+	return detectWSL(runtime.GOOS, os.LookupEnv, os.ReadFile)
+}
+
+func detectWSL(goos string, lookupEnv func(string) (string, bool), readFile func(string) ([]byte, error)) bool {
+	if _, ok := lookupEnv("WSL_DISTRO_NAME"); ok {
+		return true
+	}
+
+	if _, ok := lookupEnv("WSL_INTEROP"); ok {
+		return true
+	}
+
+	if goos == "windows" && isWSLFromWindowsProcess() {
+		return true
+	}
+
+	if goos != "linux" {
 		return false
 	}
 
-	if _, ok := os.LookupEnv("WSL_DISTRO_NAME"); ok {
-		return true
-	}
-
-	if _, ok := os.LookupEnv("WSL_INTEROP"); ok {
-		return true
-	}
-
-	content, err := os.ReadFile("/proc/sys/kernel/osrelease")
+	content, err := readFile("/proc/sys/kernel/osrelease")
 	if err != nil {
 		return false
 	}
@@ -126,6 +134,8 @@ func main() {
 				fmt.Fprintf(os.Stderr, "Error: Could not set input source to '%s'\n", arg)
 				if runtime.GOOS == "windows" {
 					fmt.Fprintf(os.Stderr, "On Windows, this controls IME mode as well as input IDs\n")
+					fmt.Fprintf(os.Stderr, "Only the active layout language and 'en-US' are supported\n")
+					fmt.Fprintf(os.Stderr, "Official layout codes (for example '00000804' or '0x804') request keyboard layout switching\n")
 					fmt.Fprintf(os.Stderr, "Try 'en-US' for English mode (IME off) and 'zh-CN'/'ja-JP'/'ko-KR' for IME on\n")
 				} else {
 					fmt.Fprintf(os.Stderr, "Use 'im-switch -l' to see available input sources\n")
