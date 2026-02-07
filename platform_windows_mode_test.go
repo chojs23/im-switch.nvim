@@ -78,6 +78,28 @@ func TestIsOfficialLayoutCode(t *testing.T) {
 	}
 }
 
+func TestShouldSwitchLayoutForSourceID(t *testing.T) {
+	tests := []struct {
+		name     string
+		sourceID string
+		want     bool
+	}{
+		{name: "klid should switch layout", sourceID: "00000804", want: true},
+		{name: "0x code should switch layout", sourceID: "0x411", want: true},
+		{name: "language tag should not switch layout", sourceID: "en-US", want: false},
+		{name: "cjk language tag should not switch layout", sourceID: "zh-CN", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldSwitchLayoutForSourceID(tt.sourceID)
+			if got != tt.want {
+				t.Fatalf("shouldSwitchLayoutForSourceID(%q) = %v, want %v", tt.sourceID, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPrimaryLanguage(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -194,6 +216,28 @@ func TestShouldForceNativeMode(t *testing.T) {
 			got := shouldForceNativeMode(tt.sourceID)
 			if got != tt.want {
 				t.Fatalf("shouldForceNativeMode(%q) = %v, want %v", tt.sourceID, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestShouldDisableNativeMode(t *testing.T) {
+	tests := []struct {
+		name     string
+		sourceID string
+		want     bool
+	}{
+		{name: "english disables native mode", sourceID: "en-US", want: true},
+		{name: "english case-insensitive", sourceID: "EN-us", want: true},
+		{name: "korean does not disable native mode", sourceID: "ko-KR", want: false},
+		{name: "chinese does not disable native mode", sourceID: "zh-CN", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shouldDisableNativeMode(tt.sourceID)
+			if got != tt.want {
+				t.Fatalf("shouldDisableNativeMode(%q) = %v, want %v", tt.sourceID, got, tt.want)
 			}
 		})
 	}

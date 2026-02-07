@@ -219,7 +219,8 @@ You can also use `0x` style values:
 **Windows behavior**:
 
 - `im-switch -l` shows installed keyboard layouts.
-- `im-switch [id]` tries to switch the active layout first.
+- `im-switch [id]` changes IME mode by default.
+- Keyboard layout switching is done when you pass an official layout code (KLID/hex).
 - Then IME mode is applied:
   - `en-US` requests English mode (IME off)
   - `zh-CN` / `ja-JP` / `ko-KR` request IME on

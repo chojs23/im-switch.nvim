@@ -132,12 +132,18 @@ func setInputSource(sourceID string) bool {
 		return false
 	}
 
-	if !switchLayoutIfAvailable(sourceID) {
-		return false
+	if shouldSwitchLayoutForSourceID(sourceID) {
+		if !switchLayoutIfAvailable(sourceID) {
+			return false
+		}
 	}
 
-	// Windows request maps to layout and IME mode control.
+	// Windows request maps to IME mode control. Official layout codes also switch layout.
 	return setIMEStatus(sourceID)
+}
+
+func shouldSwitchLayoutForSourceID(sourceID string) bool {
+	return isOfficialLayoutCode(sourceID)
 }
 
 func switchLayoutIfAvailable(sourceID string) bool {
@@ -422,12 +428,20 @@ func setIMEStatus(sourceID string) bool {
 		return setNativeConversionMode(true)
 	}
 
+	if shouldDisableNativeMode(sourceID) {
+		return setNativeConversionMode(false)
+	}
+
 	return true
 }
 
 func shouldForceNativeMode(sourceID string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(sourceID))
 	return normalized == "ko-kr" || normalized == "zh-cn" || normalized == "zh-tw"
+}
+
+func shouldDisableNativeMode(sourceID string) bool {
+	return strings.EqualFold(strings.TrimSpace(sourceID), "en-US")
 }
 
 func setIMEOpenStatus(open bool) bool {
