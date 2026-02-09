@@ -4,7 +4,7 @@ A Neovim plugin that automatically switches keyboard input method to English whe
 
 Perfect for users who type in multiple languages and want seamless input method switching in Neovim.
 
-[![](https://github.com/user-attachments/assets/d7c25f49-ae59-4aaf-866d-1ab29663a018)](https://github.com/user-attachments/assets/d7c25f49-ae59-4aaf-866d-1ab29663a018)
+![im-switch demo](https://github.com/user-attachments/assets/a2335b7e-5ae3-4cea-8fbc-ccc6549da5e4)
 
 ## Features
 
