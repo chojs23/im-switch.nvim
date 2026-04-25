@@ -21,6 +21,8 @@ var (
 	getKeyboardLayoutList    = user32.NewProc("GetKeyboardLayoutList")
 	loadKeyboardLayoutW      = user32.NewProc("LoadKeyboardLayoutW")
 	activateKeyboardLayout   = user32.NewProc("ActivateKeyboardLayout")
+	getKeyState              = user32.NewProc("GetKeyState")
+	keybdEvent               = user32.NewProc("keybd_event")
 	immGetDefaultIMEWnd      = imm32.NewProc("ImmGetDefaultIMEWnd")
 	sendMessageA             = user32.NewProc("SendMessageA")
 )
@@ -33,8 +35,10 @@ const (
 	IMC_GETOPENSTATUS         = 0x0005
 	IMC_SETOPENSTATUS         = 0x0006
 	IME_CMODE_NATIVE          = 0x0001
+	KEYEVENTF_KEYUP           = 0x0002
 	KLF_ACTIVATE              = 0x00000001
 	KLF_SUBSTITUTE_OK         = 0x00000002
+	VK_CAPITAL                = 0x14
 )
 
 // HKL represents a handle to keyboard layout
@@ -552,6 +556,23 @@ func getDetailedIMEStatus() string {
 		return "open"
 	}
 	return "closed"
+}
+
+func turnOffCapsLock() bool {
+	if !isCapsLockOn() {
+		return true
+	}
+
+	keybdEvent.Call(VK_CAPITAL, 0, 0, 0)
+	keybdEvent.Call(VK_CAPITAL, 0, KEYEVENTF_KEYUP, 0)
+	time.Sleep(20 * time.Millisecond)
+
+	return !isCapsLockOn()
+}
+
+func isCapsLockOn() bool {
+	state, _, _ := getKeyState.Call(VK_CAPITAL)
+	return state&1 == 1
 }
 
 func getBackendStatus() string {

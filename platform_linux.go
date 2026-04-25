@@ -251,6 +251,64 @@ func setInputSourceXKB(sourceID string) bool {
 	return cmd.Run() == nil
 }
 
+func turnOffCapsLock() bool {
+	on, ok := isCapsLockOn()
+	if !ok {
+		return false
+	}
+	if !on {
+		return true
+	}
+
+	if _, err := exec.LookPath("xdotool"); err != nil {
+		return false
+	}
+
+	if err := exec.Command("xdotool", "key", "Caps_Lock").Run(); err != nil {
+		return false
+	}
+
+	on, ok = isCapsLockOn()
+	return ok && !on
+}
+
+func isCapsLockOn() (bool, bool) {
+	if _, err := exec.LookPath("xset"); err != nil {
+		return false, false
+	}
+
+	output, err := exec.Command("xset", "q").Output()
+	if err != nil {
+		return false, false
+	}
+
+	return parseCapsLockState(string(output))
+}
+
+func parseCapsLockState(output string) (bool, bool) {
+	lower := strings.ToLower(output)
+	marker := "caps lock:"
+	index := strings.Index(lower, marker)
+	if index == -1 {
+		return false, false
+	}
+
+	value := output[index+len(marker):]
+	fields := strings.Fields(value)
+	if len(fields) == 0 {
+		return false, false
+	}
+
+	switch strings.ToLower(fields[0]) {
+	case "on":
+		return true, true
+	case "off":
+		return false, true
+	default:
+		return false, false
+	}
+}
+
 func getBackendStatus() string {
 	method := detectInputMethod()
 	if method == "" {

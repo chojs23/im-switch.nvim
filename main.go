@@ -12,6 +12,7 @@ func printUsage() {
 	fmt.Println("  im-switch                    # Show current input source")
 	fmt.Println("  im-switch --status           # Show OS, binary path, backend, and current input source")
 	fmt.Println("  im-switch -l                 # List all input sources")
+	fmt.Println("  im-switch --capslock-off     # Turn Caps Lock off if it is on")
 	fmt.Println("  im-switch [input-source-id]  # Switch to input source")
 	fmt.Println("")
 	fmt.Println("Examples:")
@@ -129,6 +130,11 @@ func main() {
 			}
 		} else if arg == "-h" || arg == "--help" {
 			printUsage()
+		} else if arg == "--capslock-off" {
+			if !turnOffCapsLock() {
+				fmt.Fprintf(os.Stderr, "Error: Could not turn Caps Lock off\n")
+				os.Exit(1)
+			}
 		} else {
 			if !setInputSource(arg) {
 				fmt.Fprintf(os.Stderr, "Error: Could not set input source to '%s'\n", arg)

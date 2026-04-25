@@ -1,6 +1,6 @@
 # im-switch.nvim
 
-A Neovim plugin that automatically switches keyboard input method to English when Neovim is focused or in normal mode, and restores the previous input method when entering insert mode.
+A Neovim plugin that automatically switches keyboard input method to English when Neovim is focused or in normal mode.
 
 Perfect for users who type in multiple languages and want seamless input method switching in Neovim.
 
@@ -9,7 +9,8 @@ Perfect for users who type in multiple languages and want seamless input method 
 ## Features
 
 - **Auto-switch to English** when Neovim gains focus
-- **Smart mode switching**: English in normal/command mode, restore in insert mode
+- **Smart mode switching**: English in normal/command mode
+- **Caps Lock safety**: Turns Caps Lock off when switching back to the default input
 - **macOS native**: Uses macOS Text Input Source APIs
 - **Linux support**: Works with IBus, Fcitx, Fcitx5, and XKB layouts
 - **Windows support**: Switches installed layouts and CJK IME mode
@@ -72,8 +73,8 @@ require('im-switch').setup({
   -- Auto-switch to default input in normal mode (default: true)
   auto_switch = true,
 
-  -- Auto-restore previous input in insert mode (default: false) (experimental)
-  auto_restore = false,
+  -- Turn Caps Lock off while switching to default input (default: true)
+  auto_capslock_off = true,
 
   -- Enable debug logging (default: false)
   debug = false,
@@ -106,7 +107,7 @@ local is_on = im_switch.is_enabled() -- Check if enabled
 
 -- Input method controls
 im_switch.switch_to_english()  -- Switch to default input
-im_switch.restore_input()      -- Restore previous input method
+im_switch.turn_off_capslock()  -- Turn Caps Lock off if it is on
 
 -- Get current input method
 local current = im_switch.get_current()
@@ -129,7 +130,6 @@ The plugin automatically handles these events:
 1. **Focus Events**: When Neovim gains focus → switches to default input
 2. **Mode Changes**:
    - Normal/Command mode → switches to default input
-   - Insert mode (from normal) → restores previous input method (if auto_restore is enabled)
 
 ## Finding Input Method IDs
 
@@ -282,8 +282,18 @@ make test
 
 ### Permission errors
 
-- The plugin only reads/writes input methods, no special permissions needed
+- Input method switching only reads and writes input methods, no special permissions needed
+- On macOS, Caps Lock auto-off posts a Caps Lock key event. If it does not work, allow your terminal or Neovim host app in **System Settings → Privacy & Security → Accessibility**
 - If you see permission errors, try rebuilding: `make clean && make build`
+
+### Caps Lock auto-off limitations
+
+- Linux Caps Lock auto-off uses `xset q` to read the Caps Lock state and `xdotool key Caps_Lock` to turn it off.
+- This means Caps Lock auto-off is supported on X11 sessions with `xset` and `xdotool` installed. It may not work on Wayland-only, headless, or WSL Linux sessions.
+- If your platform cannot support Caps Lock control, disable only that part:
+  ```lua
+  require('im-switch').setup({ auto_capslock_off = false })
+  ```
 
 ## Requirements
 
@@ -304,6 +314,7 @@ make test
   - Fcitx (`fcitx`)
   - Fcitx5 (`fcitx5`)
   - XKB (setxkbmap - built into X11/Wayland)
+- **Caps Lock auto-off**: `xset` and `xdotool` on X11 sessions
 
 ### Windows
 

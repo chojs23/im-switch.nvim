@@ -21,7 +21,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "com.apple.keylayout.ABC",
 			auto_switch = true,
-			auto_restore = false,
+			auto_capslock_off = true,
 			debug = false,
 		}
 	elseif wsl then
@@ -29,7 +29,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "en-US",
 			auto_switch = true,
-			auto_restore = false,
+			auto_capslock_off = true,
 			debug = false,
 		}
 	elseif is_linux then
@@ -37,7 +37,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "us",
 			auto_switch = true,
-			auto_restore = false,
+			auto_capslock_off = true,
 			debug = false,
 		}
 	else
@@ -45,7 +45,7 @@ local function get_default_config()
 			binary_path = "im-switch",
 			default_input = "en-US",
 			auto_switch = true,
-			auto_restore = false,
+			auto_capslock_off = true,
 			debug = false,
 		}
 	end
@@ -54,10 +54,6 @@ end
 ---@type ImSwitchConfig
 local config = get_default_config()
 
----@type string|nil
-local saved_input = nil
----@type string|nil
-local last_mode = nil
 ---@type boolean
 local enabled = true
 
@@ -109,22 +105,20 @@ local function set_input(input_id)
 	return false
 end
 
-local function switch_to_default()
-	if enabled and config.auto_switch then
-		local current = get_current_input()
-		if current and current ~= config.default_input then
-			saved_input = current
-			log("Saving current input: " .. current)
-			set_input(config.default_input)
-		end
+local function turn_off_capslock()
+	if config.auto_capslock_off then
+		execute_command("--capslock-off")
 	end
 end
 
-local function restore_input()
-	if enabled and config.auto_restore and saved_input then
-		log("Restoring input: " .. saved_input)
-		set_input(saved_input)
-		saved_input = nil
+local function switch_to_default()
+	if enabled and config.auto_switch then
+		turn_off_capslock()
+
+		local current = get_current_input()
+		if current and current ~= config.default_input then
+			set_input(config.default_input)
+		end
 	end
 end
 
@@ -137,11 +131,7 @@ local function on_mode_changed()
 
 	if mode == "n" or mode == "c" then
 		switch_to_default()
-	elseif mode == "i" and last_mode == "n" then
-		restore_input()
 	end
-
-	last_mode = mode
 end
 
 local function on_focus_gained()
@@ -149,17 +139,6 @@ local function on_focus_gained()
 
 	if enabled and mode ~= "i" then
 		switch_to_default()
-	end
-end
-
-local function on_focus_lost()
-	if not enabled then
-		return
-	end
-
-	local current = get_current_input()
-	if current and current ~= config.default_input then
-		saved_input = current
 	end
 end
 
@@ -174,11 +153,6 @@ local function setup_autocmds()
 	vim.api.nvim_create_autocmd({ "FocusGained" }, {
 		group = group,
 		callback = on_focus_gained,
-	})
-
-	vim.api.nvim_create_autocmd({ "FocusLost" }, {
-		group = group,
-		callback = on_focus_lost,
 	})
 
 	vim.api.nvim_create_autocmd({ "VimEnter" }, {
@@ -277,8 +251,8 @@ function M.switch_to_english()
 	switch_to_default()
 end
 
-function M.restore_input()
-	restore_input()
+function M.turn_off_capslock()
+	turn_off_capslock()
 end
 
 ---Get the current input method

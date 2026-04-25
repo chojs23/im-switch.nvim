@@ -1,61 +1,66 @@
 local M = {}
 
 local function mock_vim()
-	_G.vim = {
-		fn = {
-			has = function(feature)
-				if feature == "mac" or feature == "macunix" then
-					return 1
-				end
-				return 0
-			end,
-			executable = function(path)
-				return 1
-			end,
-			fnamemodify = function(path, modifier)
-				return "/test/path"
-			end,
-		},
-		tbl_deep_extend = function(behavior, ...)
-			local result = {}
-			for _, t in ipairs({ ... }) do
-				for k, v in pairs(t) do
-					result[k] = v
-				end
-			end
-			return result
-		end,
-		api = {
-			nvim_create_augroup = function(name, opts)
-				return 1
-			end,
-			nvim_create_autocmd = function(events, opts) end,
-		},
-		notify = function(msg, level) end,
-		log = { levels = { WARN = 1 } },
-		split = function(str, delimiter)
-			local result = {}
-			for match in (str .. delimiter):gmatch("(.-)" .. delimiter) do
-				table.insert(result, match)
-			end
-			return result
-		end,
-	}
+	_G.im_switch_test_commands = {}
 
-	_G.debug = {
-		getinfo = function(level, what)
-			return { source = "@/test/path/init.lua" }
-		end,
-	}
+	local vim_mock = _G.vim or {}
+	vim_mock.fn = vim_mock.fn or {}
+	vim_mock.fn.has = function(feature)
+		if feature == "mac" or feature == "macunix" then
+			return 1
+		end
+		return 0
+	end
+	vim_mock.fn.executable = function(path)
+		return 1
+	end
+	vim_mock.fn.fnamemodify = function(path, modifier)
+		return "/test/path"
+	end
+	vim_mock.tbl_deep_extend = function(behavior, ...)
+		local result = {}
+		for _, t in ipairs({ ... }) do
+			for k, v in pairs(t) do
+				result[k] = v
+			end
+		end
+		return result
+	end
+	vim_mock.api = vim_mock.api or {}
+	vim_mock.api.nvim_create_augroup = function(name, opts)
+		return 1
+	end
+	vim_mock.api.nvim_create_autocmd = function(events, opts) end
+	vim_mock.api.nvim_create_user_command = function(name, callback, opts) end
+	vim_mock.notify = function(msg, level) end
+	vim_mock.log = { levels = { WARN = 1 } }
+	vim_mock.split = function(str, delimiter)
+		local result = {}
+		for match in (str .. delimiter):gmatch("(.-)" .. delimiter) do
+			table.insert(result, match)
+		end
+		return result
+	end
+	_G.vim = vim_mock
+
+	local debug_mock = _G.debug or {}
+	debug_mock.getinfo = function(level, what)
+		return { source = "@/test/path/init.lua" }
+	end
+	_G.debug = debug_mock
 
 	_G.io = {
 		popen = function(cmd)
+			table.insert(_G.im_switch_test_commands, cmd)
+
 			local handle = {
 				read = function(self, format)
 					if cmd:find("im-switch$") then
 						return "com.apple.keylayout.ABC"
 					elseif cmd:find("im-switch -l") then
 						return "com.apple.keylayout.ABC\ncom.apple.inputmethod.Korean.2SetKorean"
+					elseif cmd:find("im%-switch %-%-capslock%-off") then
+						return ""
 					else
 						return "com.apple.keylayout.ABC"
 					end
@@ -91,19 +96,18 @@ local function assert_not_nil(value, msg)
 end
 
 function M.test_default_config()
-	local config = im_switch.get_default_config and im_switch.get_default_config()
-		or {
-			binary_path = "im-switch",
-			default_input = "com.apple.keylayout.ABC",
-			auto_switch = true,
-			auto_restore = true,
-			debug = false,
-		}
+	local config = {
+		binary_path = "im-switch",
+		default_input = "com.apple.keylayout.ABC",
+		auto_switch = true,
+		debug = false,
+		auto_capslock_off = true,
+	}
 
 	assert_eq(config.binary_path, "im-switch", "binary_path should be im-switch")
 	assert_eq(config.default_input, "com.apple.keylayout.ABC", "default_input should be ABC")
 	assert_true(config.auto_switch, "auto_switch should be true")
-	assert_true(config.auto_restore, "auto_restore should be true")
+	assert_true(config.auto_capslock_off, "auto_capslock_off should be true")
 end
 
 function M.test_get_current_input()
@@ -118,7 +122,18 @@ function M.test_list_inputs()
 end
 
 function M.test_switch_to_english()
+	_G.im_switch_test_commands = {}
 	im_switch.switch_to_english()
+
+	local found = false
+	for _, cmd in ipairs(_G.im_switch_test_commands) do
+		if cmd:find("im%-switch %-%-capslock%-off") then
+			found = true
+			break
+		end
+	end
+
+	assert_true(found, "switch_to_english should turn Caps Lock off")
 end
 
 function M.test_set_input()
@@ -126,8 +141,29 @@ function M.test_set_input()
 	assert_true(result, "set_input should return true for valid input")
 end
 
-function M.test_restore_input()
-	im_switch.restore_input()
+function M.test_turn_off_capslock()
+	_G.im_switch_test_commands = {}
+	im_switch.turn_off_capslock()
+
+	assert_true(
+		_G.im_switch_test_commands[1]:find("im%-switch %-%-capslock%-off") ~= nil,
+		"turn_off_capslock should call the capslock command"
+	)
+end
+
+function M.test_auto_capslock_off_can_be_disabled()
+	im_switch.setup({ auto_capslock_off = false })
+	_G.im_switch_test_commands = {}
+	im_switch.switch_to_english()
+
+	for _, cmd in ipairs(_G.im_switch_test_commands) do
+		assert_true(
+			cmd:find("im%-switch %-%-capslock%-off") == nil,
+			"switch_to_english should not call capslock command when auto_capslock_off is false"
+		)
+	end
+
+	im_switch.setup({ auto_capslock_off = true })
 end
 
 function M.run_all_tests()
@@ -137,7 +173,8 @@ function M.run_all_tests()
 		"test_list_inputs",
 		"test_switch_to_english",
 		"test_set_input",
-		"test_restore_input",
+		"test_turn_off_capslock",
+		"test_auto_capslock_off_can_be_disabled",
 	}
 
 	local passed = 0
@@ -163,4 +200,3 @@ if not package.loaded["busted"] then
 end
 
 return M
-
