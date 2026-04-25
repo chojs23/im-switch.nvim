@@ -4,10 +4,12 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Foundation -framework Carbon
+#cgo LDFLAGS: -framework Foundation -framework Carbon -framework ApplicationServices
 
+#include <ApplicationServices/ApplicationServices.h>
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <unistd.h>
 
 // Get current input source
 CFStringRef getCurrentInputSource() {
@@ -68,6 +70,33 @@ bool setInputSource(CFStringRef sourceID) {
     CFRelease(inputSources);
 
     return status == noErr;
+}
+
+bool isCapsLockOn() {
+    CGEventFlags flags = CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState);
+    return (flags & kCGEventFlagMaskAlphaShift) != 0;
+}
+
+bool turnOffCapsLock() {
+    if (!isCapsLockOn()) {
+        return true;
+    }
+
+    CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)kVK_CapsLock, true);
+    CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)kVK_CapsLock, false);
+    if (keyDown == NULL || keyUp == NULL) {
+        if (keyDown) CFRelease(keyDown);
+        if (keyUp) CFRelease(keyUp);
+        return false;
+    }
+
+    CGEventPost(kCGHIDEventTap, keyDown);
+    CGEventPost(kCGHIDEventTap, keyUp);
+    CFRelease(keyDown);
+    CFRelease(keyUp);
+    usleep(20000);
+
+    return !isCapsLockOn();
 }
 
 // Convert CFString to C string
@@ -145,6 +174,10 @@ func setInputSource(sourceID string) bool {
 	defer C.CFRelease(C.CFTypeRef(cfStr))
 
 	return bool(C.setInputSource(cfStr))
+}
+
+func turnOffCapsLock() bool {
+	return bool(C.turnOffCapsLock())
 }
 
 func getBackendStatus() string {

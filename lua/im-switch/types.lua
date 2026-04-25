@@ -4,7 +4,7 @@
 ---@field binary_path? string Path to the im-switch binary
 ---@field default_input? string Default input method ID to switch to
 ---@field auto_switch? boolean Automatically switch to default input in normal mode
----@field auto_restore? boolean Automatically restore previous input in insert mode (experimental)
+---@field auto_capslock_off? boolean Automatically turn Caps Lock off while switching to default input
 ---@field debug? boolean Enable debug logging
 
 ---@class ImSwitch
@@ -17,8 +17,8 @@ function ImSwitch.setup(opts) end
 ---Switch to the default input method (English)
 function ImSwitch.switch_to_english() end
 
----Restore the previously saved input method
-function ImSwitch.restore_input() end
+---Turn Caps Lock off if it is on
+function ImSwitch.turn_off_capslock() end
 
 ---Get the current input method
 ---@return string|nil current_input Current input method ID or nil if failed

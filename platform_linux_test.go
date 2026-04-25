@@ -88,3 +88,39 @@ func TestXKBInputSources(t *testing.T) {
 	}
 }
 
+func TestParseCapsLockState(t *testing.T) {
+	tests := []struct {
+		name   string
+		output string
+		wantOn bool
+		wantOK bool
+	}{
+		{
+			name:   "caps lock off",
+			output: "00: Caps Lock:   off    01: Num Lock:    on     02: Scroll Lock: off",
+			wantOn: false,
+			wantOK: true,
+		},
+		{
+			name:   "caps lock on",
+			output: "00: Caps Lock:   on     01: Num Lock:    off    02: Scroll Lock: off",
+			wantOn: true,
+			wantOK: true,
+		},
+		{
+			name:   "missing caps lock",
+			output: "Keyboard Control:\n  auto repeat: on",
+			wantOn: false,
+			wantOK: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOn, gotOK := parseCapsLockState(tt.output)
+			if gotOn != tt.wantOn || gotOK != tt.wantOK {
+				t.Fatalf("parseCapsLockState() = (%v, %v), want (%v, %v)", gotOn, gotOK, tt.wantOn, tt.wantOK)
+			}
+		})
+	}
+}
