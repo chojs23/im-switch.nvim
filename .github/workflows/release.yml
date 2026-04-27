@@ -44,7 +44,7 @@ jobs:
             binary_name="${binary_name}.exe"
           fi
 
-          go build -o "${binary_name}" .
+          go build -ldflags="-X main.version=${{ github.ref_name }}" -o "${binary_name}" .
 
           asset_name="im-switch-${{ matrix.asset_os }}"
           if [ "${RUNNER_OS}" = "Windows" ]; then
@@ -63,12 +63,14 @@ jobs:
         shell: bash
         run: |
           "./${{ steps.build.outputs.asset_name }}" -h
+          "./${{ steps.build.outputs.asset_name }}" --version
 
       - name: Smoke test (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           .\${{ steps.build.outputs.asset_name }} -h
+          .\${{ steps.build.outputs.asset_name }} --version
 
       - name: Package and checksum (macOS/Linux)
         if: runner.os != 'Windows'
