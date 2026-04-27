@@ -5,6 +5,20 @@ import (
 	"testing"
 )
 
+func TestVersionOutput(t *testing.T) {
+	originalVersion := version
+	version = "1.2.3-test"
+	t.Cleanup(func() {
+		version = originalVersion
+	})
+
+	got := versionOutput()
+	want := "im-switch 1.2.3-test"
+	if got != want {
+		t.Fatalf("versionOutput() = %q, want %q", got, want)
+	}
+}
+
 func TestGetCurrentInputSource(t *testing.T) {
 	current := getCurrentInputSource()
 	if current == "" {
@@ -125,4 +139,3 @@ func TestInputSourceToggling(t *testing.T) {
 		t.Error("Failed to restore original input source")
 	}
 }
-

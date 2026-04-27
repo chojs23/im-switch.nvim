@@ -2,6 +2,8 @@ BINARY_NAME=im-switch
 BUILD_DIR=build
 INSTALL_DIR=/usr/local/bin
 WSL_WIN_OUT ?= /mnt/c/Tools/im-switch.exe
+VERSION ?= dev
+GO_LDFLAGS := -X main.version=$(VERSION)
 
 # Detect operating system
 UNAME_S := $(shell uname -s 2>/dev/null || echo "Windows")
@@ -33,13 +35,13 @@ GO_SOURCES := $(wildcard *.go)
 $(BINARY_NAME): $(GO_SOURCES) go.mod
 	$(MKDIR)
 ifeq ($(DETECTED_OS),Darwin)
-	CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=1 go build -ldflags="$(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 	$(COPY) $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 else ifeq ($(DETECTED_OS),Windows)
-	cmd /c "set CGO_ENABLED=0 && go build -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
+	cmd /c "set CGO_ENABLED=0 && go build -ldflags=\"$(GO_LDFLAGS)\" -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
 	$(COPY) $(BUILD_DIR)$(PATH_SEP)$(BINARY_NAME).exe .$(PATH_SEP)$(BINARY_NAME).exe
 else
-	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=0 go build -ldflags="$(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 	$(COPY) $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 endif
 
@@ -50,29 +52,29 @@ build: $(BINARY_NAME)
 force-build:
 	$(MKDIR)
 ifeq ($(DETECTED_OS),Darwin)
-	CGO_ENABLED=1 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=1 go build -ldflags="$(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 	$(COPY) $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 else ifeq ($(DETECTED_OS),Windows)
-	cmd /c "set CGO_ENABLED=0 && go build -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
+	cmd /c "set CGO_ENABLED=0 && go build -ldflags=\"$(GO_LDFLAGS)\" -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
 	$(COPY) $(BUILD_DIR)$(PATH_SEP)$(BINARY_NAME).exe .$(PATH_SEP)$(BINARY_NAME).exe
 else
-	CGO_ENABLED=0 go build -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=0 go build -ldflags="$(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 	$(COPY) $(BUILD_DIR)/$(BINARY_NAME) ./$(BINARY_NAME)
 endif
 
 build-release: $(GO_SOURCES) go.mod
 	$(MKDIR)
 ifeq ($(DETECTED_OS),Darwin)
-	CGO_ENABLED=1 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=1 go build -ldflags="-s -w $(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 else ifeq ($(DETECTED_OS),Windows)
-	cmd /c "set CGO_ENABLED=0 && go build -ldflags=\"-s -w\" -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
+	cmd /c "set CGO_ENABLED=0 && go build -ldflags=\"-s -w $(GO_LDFLAGS)\" -o $(BUILD_DIR)/$(BINARY_NAME).exe ."
 else
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME) .
+	CGO_ENABLED=0 go build -ldflags="-s -w $(GO_LDFLAGS)" -o $(BUILD_DIR)/$(BINARY_NAME) .
 endif
 
 build-wsl-win: $(GO_SOURCES) go.mod
 	@mkdir -p "$(dir $(WSL_WIN_OUT))"
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o "$(WSL_WIN_OUT)" .
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="$(GO_LDFLAGS)" -o "$(WSL_WIN_OUT)" .
 	@echo "Built Windows binary at $(WSL_WIN_OUT)"
 
 test-wsl-win: build-wsl-win

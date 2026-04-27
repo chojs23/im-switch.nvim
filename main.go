@@ -7,10 +7,17 @@ import (
 	"strings"
 )
 
+var version = "dev"
+
+func versionOutput() string {
+	return fmt.Sprintf("im-switch %s", version)
+}
+
 func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  im-switch                    # Show current input source")
 	fmt.Println("  im-switch --status           # Show OS, binary path, backend, and current input source")
+	fmt.Println("  im-switch --version          # Show version")
 	fmt.Println("  im-switch -l                 # List all input sources")
 	fmt.Println("  im-switch --capslock-off     # Turn Caps Lock off if it is on")
 	fmt.Println("  im-switch [input-source-id]  # Switch to input source")
@@ -114,6 +121,8 @@ func main() {
 			if code := printStatus(); code != 0 {
 				os.Exit(code)
 			}
+		} else if arg == "--version" || arg == "-v" {
+			fmt.Println(versionOutput())
 		} else if arg == "-l" || arg == "--list" {
 			sources := getAllInputSources()
 			if sources == nil {

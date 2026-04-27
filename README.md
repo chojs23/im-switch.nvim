@@ -142,6 +142,9 @@ make build
 # Show runtime status (OS, WSL, binary path, backend, current input source)
 ./build/im-switch --status
 
+# Show binary version
+./build/im-switch --version
+
 # List all input methods
 ./build/im-switch -l
 ```
@@ -254,7 +257,7 @@ If you need to build the binary manually:
 make build
 
 # Build optimized release version
-make build-release
+make build-release VERSION=v1.2.3
 
 # Install system-wide (optional)
 make install
@@ -337,6 +340,7 @@ make build-wsl-win
 # Verify from WSL
 /mnt/c/Tools/im-switch.exe
 /mnt/c/Tools/im-switch.exe --status
+/mnt/c/Tools/im-switch.exe --version
 /mnt/c/Tools/im-switch.exe en-US
 /mnt/c/Tools/im-switch.exe 00000804
 /mnt/c/Tools/im-switch.exe -l
