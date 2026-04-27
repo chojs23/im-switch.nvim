@@ -2,7 +2,7 @@ BINARY_NAME=im-switch
 BUILD_DIR=build
 INSTALL_DIR=/usr/local/bin
 WSL_WIN_OUT ?= /mnt/c/Tools/im-switch.exe
-VERSION ?= dev
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 GO_LDFLAGS := -X main.version=$(VERSION)
 
 # Detect operating system
@@ -46,7 +46,7 @@ else
 endif
 
 # Alias for the binary target
-build: $(BINARY_NAME)
+build: force-build
 
 # Force rebuild regardless of timestamps
 force-build:
