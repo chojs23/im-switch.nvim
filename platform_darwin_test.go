@@ -6,6 +6,115 @@ import (
 	"testing"
 )
 
+func withDarwinCapsLockMocks(t *testing.T, isOn func() bool, setState func(bool) bool, toggle func() bool) {
+	t.Helper()
+
+	originalIsOn := darwinIsCapsLockOn
+	originalSetState := darwinSetCapsLockState
+	originalToggle := darwinToggleCapsLockWithEvent
+
+	darwinIsCapsLockOn = isOn
+	darwinSetCapsLockState = setState
+	darwinToggleCapsLockWithEvent = toggle
+
+	t.Cleanup(func() {
+		darwinIsCapsLockOn = originalIsOn
+		darwinSetCapsLockState = originalSetState
+		darwinToggleCapsLockWithEvent = originalToggle
+	})
+}
+
+func TestDarwinTurnOffCapsLockUsesIOKitWhenStateChanges(t *testing.T) {
+	checks := 0
+	setCalls := 0
+	toggleCalls := 0
+
+	withDarwinCapsLockMocks(t,
+		func() bool {
+			checks++
+			return checks == 1
+		},
+		func(state bool) bool {
+			setCalls++
+			if state {
+				t.Fatal("turnOffCapsLock should request Caps Lock off")
+			}
+			return true
+		},
+		func() bool {
+			toggleCalls++
+			return true
+		},
+	)
+
+	if !turnOffCapsLock() {
+		t.Fatal("turnOffCapsLock should succeed when IOKit changes state")
+	}
+	if setCalls != 1 {
+		t.Fatalf("darwinSetCapsLockState calls = %d, want 1", setCalls)
+	}
+	if toggleCalls != 0 {
+		t.Fatalf("darwinToggleCapsLockWithEvent calls = %d, want 0", toggleCalls)
+	}
+}
+
+func TestDarwinTurnOffCapsLockFallsBackWhenIOKitDoesNotChangeState(t *testing.T) {
+	setCalls := 0
+	toggleCalls := 0
+
+	withDarwinCapsLockMocks(t,
+		func() bool { return true },
+		func(state bool) bool {
+			setCalls++
+			if state {
+				t.Fatal("turnOffCapsLock should request Caps Lock off")
+			}
+			return true
+		},
+		func() bool {
+			toggleCalls++
+			return true
+		},
+	)
+
+	if !turnOffCapsLock() {
+		t.Fatal("turnOffCapsLock should return fallback success")
+	}
+	if setCalls != 1 {
+		t.Fatalf("darwinSetCapsLockState calls = %d, want 1", setCalls)
+	}
+	if toggleCalls != 1 {
+		t.Fatalf("darwinToggleCapsLockWithEvent calls = %d, want 1", toggleCalls)
+	}
+}
+
+func TestDarwinTurnOffCapsLockSkipsWorkWhenAlreadyOff(t *testing.T) {
+	setCalls := 0
+	toggleCalls := 0
+
+	withDarwinCapsLockMocks(t,
+		func() bool { return false },
+		func(state bool) bool {
+			setCalls++
+			return true
+		},
+		func() bool {
+			toggleCalls++
+			return true
+		},
+	)
+
+	if !turnOffCapsLock() {
+		t.Fatal("turnOffCapsLock should succeed when Caps Lock is already off")
+	}
+	if setCalls != 0 {
+		t.Fatalf("darwinSetCapsLockState calls = %d, want 0", setCalls)
+	}
+	if toggleCalls != 0 {
+		t.Fatalf("darwinToggleCapsLockWithEvent calls = %d, want 0", toggleCalls)
+	}
+}
+
 func TestDarwinInputSourceFunctions(t *testing.T) {
 	current := getCurrentInputSource()
 	if current == "" {
@@ -106,4 +215,3 @@ func TestDarwinInputSourceSwitching(t *testing.T) {
 
 	setInputSource(originalSource)
 }
-

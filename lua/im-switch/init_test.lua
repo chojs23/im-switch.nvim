@@ -4,6 +4,7 @@ local function mock_vim()
 	_G.im_switch_test_commands = {}
 
 	local vim_mock = _G.vim or {}
+	vim_mock.env = vim_mock.env or {}
 	vim_mock.fn = vim_mock.fn or {}
 	vim_mock.fn.has = function(feature)
 		if feature == "mac" or feature == "macunix" then

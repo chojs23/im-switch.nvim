@@ -4,11 +4,14 @@ package main
 
 /*
 #cgo CFLAGS: -x objective-c
-#cgo LDFLAGS: -framework Foundation -framework Carbon -framework ApplicationServices
+#cgo LDFLAGS: -framework Foundation -framework Carbon -framework ApplicationServices -framework IOKit
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/hidsystem/IOHIDLib.h>
+#include <IOKit/hidsystem/IOHIDParameter.h>
 #include <unistd.h>
 
 // Get current input source
@@ -77,11 +80,32 @@ bool isCapsLockOn() {
     return (flags & kCGEventFlagMaskAlphaShift) != 0;
 }
 
-bool turnOffCapsLock() {
-    if (!isCapsLockOn()) {
-        return true;
+bool setCapsLockState(bool state) {
+    io_service_t service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching(kIOHIDSystemClass));
+    if (service == MACH_PORT_NULL) {
+        return false;
     }
 
+    io_connect_t connect = MACH_PORT_NULL;
+    kern_return_t status = IOServiceOpen(service, mach_task_self(), kIOHIDParamConnectType, &connect);
+    IOObjectRelease(service);
+    if (status != KERN_SUCCESS) {
+        return false;
+    }
+
+    status = IOHIDSetModifierLockState(connect, kIOHIDCapsLockState, state);
+
+    bool currentState = state;
+    bool verified = false;
+    if (status == KERN_SUCCESS && IOHIDGetModifierLockState(connect, kIOHIDCapsLockState, &currentState) == KERN_SUCCESS) {
+        verified = currentState == state;
+    }
+
+    IOServiceClose(connect);
+    return status == KERN_SUCCESS && verified;
+}
+
+bool toggleCapsLockWithKeyEvent() {
     CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)kVK_CapsLock, true);
     CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, (CGKeyCode)kVK_CapsLock, false);
     if (keyDown == NULL || keyUp == NULL) {
@@ -117,7 +141,20 @@ char* cfStringToCString(CFStringRef cfStr) {
 }
 */
 import "C"
-import "unsafe"
+import (
+	"time"
+	"unsafe"
+)
+
+var (
+	darwinIsCapsLockOn            = func() bool { return bool(C.isCapsLockOn()) }
+	darwinSetCapsLockState        = func(state bool) bool { return bool(C.setCapsLockState(C.bool(state))) }
+	darwinToggleCapsLockWithEvent = func() bool { return bool(C.toggleCapsLockWithKeyEvent()) }
+)
+
+func waitForDarwinCapsLockState() {
+	time.Sleep(20 * time.Millisecond)
+}
 
 func getCurrentInputSource() string {
 	cfStr := C.getCurrentInputSource()
@@ -177,7 +214,17 @@ func setInputSource(sourceID string) bool {
 }
 
 func turnOffCapsLock() bool {
-	return bool(C.turnOffCapsLock())
+	if !darwinIsCapsLockOn() {
+		return true
+	}
+
+	darwinSetCapsLockState(false)
+	waitForDarwinCapsLockState()
+	if !darwinIsCapsLockOn() {
+		return true
+	}
+
+	return darwinToggleCapsLockWithEvent()
 }
 
 func getBackendStatus() string {
