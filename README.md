@@ -256,6 +256,10 @@ If you need to build the binary manually:
 # Build for development
 make build
 
+# By default, the binary version is derived from git metadata.
+# You can override it when building from a source archive without .git.
+make build VERSION=v1.2.3
+
 # Build optimized release version
 make build-release VERSION=v1.2.3
 
