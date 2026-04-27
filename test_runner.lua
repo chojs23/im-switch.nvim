@@ -13,6 +13,7 @@ local function run_integration_test()
 	print("\nRunning integration test...")
 
 	local im_switch = require("im-switch.init")
+	local real_io = io
 
 	_G.vim = {
 		fn = {
@@ -45,6 +46,7 @@ local function run_integration_test()
 				return 1
 			end,
 			nvim_create_autocmd = function(events, opts) end,
+			nvim_create_user_command = function(name, callback, opts) end,
 		},
 		notify = function(msg, level)
 			print("NOTIFY: " .. msg)
@@ -67,7 +69,7 @@ local function run_integration_test()
 
 	_G.io = {
 		popen = function(cmd)
-			local handle = io.popen(cmd .. " 2>&1")
+			local handle = real_io.popen(cmd .. " 2>&1")
 			if not handle then
 				return {
 					read = function()
@@ -132,4 +134,3 @@ local function main()
 end
 
 main()
-
