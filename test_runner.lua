@@ -29,7 +29,8 @@ local function run_integration_test()
 				return 1
 			end,
 			fnamemodify = function(path, modifier)
-				return "./im-switch"
+				-- Resolve to the repo root so setup() finds build/im-switch.
+				return os.getenv("PWD")
 			end,
 		},
 		tbl_deep_extend = function(behavior, ...)
@@ -67,22 +68,32 @@ local function run_integration_test()
 		end,
 	}
 
-	_G.io = {
-		popen = function(cmd)
-			local handle = real_io.popen(cmd .. " 2>&1")
-			if not handle then
-				return {
-					read = function()
-						return ""
-					end,
-					close = function()
-						return false
-					end,
-				}
-			end
-			return handle
-		end,
-	}
+	-- Back vim.system with a real blocking process run so the integration
+	-- test exercises the actual binary through the plugin's code paths.
+	_G.vim.system = function(cmd, opts, on_exit)
+		local handle = real_io.popen(table.concat(cmd, " ") .. " 2>&1")
+		local stdout = ""
+		local ok = false
+		if handle then
+			stdout = handle:read("*a") or ""
+			ok = handle:close() and true or false
+		end
+		local result = { code = ok and 0 or 1, stdout = stdout }
+		if on_exit then
+			on_exit(result)
+		end
+		return {
+			wait = function()
+				return result
+			end,
+		}
+	end
+	_G.vim.schedule = function(fn)
+		fn()
+	end
+	_G.vim.fn.mode = function()
+		return "n"
+	end
 
 	local success, err = pcall(function()
 		im_switch.setup({ debug = true })

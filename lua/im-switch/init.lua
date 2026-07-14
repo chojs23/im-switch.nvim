@@ -65,28 +65,69 @@ local function log(msg)
 end
 
 ---@param args string|nil Command arguments
+---@return string[] cmd Argv list for vim.system
+local function build_cmd(args)
+	local cmd = { config.binary_path }
+	if args then
+		table.insert(cmd, args)
+	end
+	return cmd
+end
+
+---@param result vim.SystemCompleted
+---@return string|nil output Trimmed stdout or nil on failure
+local function command_output(result)
+	if result.code ~= 0 then
+		return nil
+	end
+	return (result.stdout or ""):gsub("%s+$", "")
+end
+
+---Run the binary and block until it exits. Only for API functions that
+---must return a value; editor event handlers use execute_command_async.
+---@param args string|nil Command arguments
 ---@return string|nil result Command output or nil if failed
 local function execute_command(args)
-	local cmd = config.binary_path
-	if args then
-		cmd = cmd .. " " .. args
-	end
+	local cmd = build_cmd(args)
 
-	local handle = io.popen(cmd .. " 2>&1")
-	if not handle then
-		log("Failed to execute: " .. cmd)
+	local ok, proc = pcall(vim.system, cmd, { text = true })
+	if not ok then
+		log("Failed to execute: " .. table.concat(cmd, " "))
 		return nil
 	end
 
-	local result = handle:read("*a")
-	local success = handle:close()
-
-	if not success then
-		log("Command failed: " .. cmd)
-		return nil
+	local output = command_output(proc:wait())
+	if not output then
+		log("Command failed: " .. table.concat(cmd, " "))
 	end
+	return output
+end
 
-	return result:gsub("%s+$", "")
+---Run the binary without blocking the editor. The callback (if any) runs
+---on the main loop via vim.schedule, so it may safely use the vim API.
+---@param args string|nil Command arguments
+---@param callback? fun(output: string|nil)
+local function execute_command_async(args, callback)
+	local cmd = build_cmd(args)
+
+	local ok = pcall(vim.system, cmd, { text = true }, function(result)
+		vim.schedule(function()
+			local output = command_output(result)
+			if not output then
+				log("Command failed: " .. table.concat(cmd, " "))
+			end
+			if callback then
+				callback(output)
+			end
+		end)
+	end)
+
+	if not ok then
+		log("Failed to execute: " .. table.concat(cmd, " "))
+		if callback then
+			callback(nil)
+		end
+	end
 end
 
 ---@return string|nil current_input Current input method ID or nil if failed
@@ -107,19 +148,36 @@ end
 
 local function turn_off_capslock()
 	if config.auto_capslock_off then
-		execute_command("--capslock-off")
+		execute_command_async("--capslock-off")
 	end
 end
 
+---Switch to the default input method without blocking. This runs on every
+---insert-mode exit, so the query and the switch are both async; a blocking
+---call here would freeze the editor for the binary's runtime on each Esc.
 local function switch_to_default()
-	if enabled and config.auto_switch then
-		turn_off_capslock()
-
-		local current = get_current_input()
-		if current and current ~= config.default_input then
-			set_input(config.default_input)
-		end
+	if not (enabled and config.auto_switch) then
+		return
 	end
+
+	turn_off_capslock()
+
+	execute_command_async(nil, function(current)
+		-- The mode may have changed while the query was in flight. Never
+		-- force-switch under the user's fingers if they are typing again.
+		local mode = vim.fn.mode()
+		if not enabled or mode:find("^i") or mode:find("^R") then
+			return
+		end
+
+		if current and current ~= config.default_input then
+			execute_command_async(config.default_input, function(output)
+				if output then
+					log("Switched to: " .. config.default_input)
+				end
+			end)
+		end
+	end)
 end
 
 local function on_mode_changed()
@@ -159,6 +217,39 @@ local function setup_autocmds()
 		group = group,
 		callback = switch_to_default,
 	})
+end
+
+local function create_user_commands()
+	vim.api.nvim_create_user_command("ImSwitchEnable", function()
+		enabled = true
+		vim.notify("[im-switch] Enabled", vim.log.levels.INFO)
+		log("Plugin enabled")
+		-- Switch to default immediately when enabled
+		switch_to_default()
+	end, { desc = "Enable im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchDisable", function()
+		enabled = false
+		vim.notify("[im-switch] Disabled", vim.log.levels.INFO)
+		log("Plugin disabled")
+	end, { desc = "Disable im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchToggle", function()
+		enabled = not enabled
+		local status = enabled and "Enabled" or "Disabled"
+		vim.notify("[im-switch] " .. status, vim.log.levels.INFO)
+		log("Plugin " .. status:lower())
+		if enabled then
+			switch_to_default()
+		end
+	end, { desc = "Toggle im-switch plugin" })
+
+	vim.api.nvim_create_user_command("ImSwitchStatus", function()
+		local status = enabled and "Enabled" or "Disabled"
+		local current = get_current_input()
+		local msg = string.format("[im-switch] Status: %s | Current input: %s", status, current or "Unknown")
+		vim.notify(msg, vim.log.levels.INFO)
+	end, { desc = "Show im-switch plugin status" })
 end
 
 ---Initialize the im-switch plugin
@@ -201,50 +292,23 @@ function M.setup(opts)
 		return
 	end
 
-	local current = get_current_input()
-	if not current or current == "" then
-		vim.notify("[im-switch] Failed to get current input method", vim.log.levels.WARN)
-		return
-	end
-
-	log("Current input method: " .. current)
-	log("Default input method: " .. config.default_input)
-
-	setup_autocmds()
-
-	-- Create user commands
-	vim.api.nvim_create_user_command("ImSwitchEnable", function()
-		enabled = true
-		vim.notify("[im-switch] Enabled", vim.log.levels.INFO)
-		log("Plugin enabled")
-		-- Switch to default immediately when enabled
-		switch_to_default()
-	end, { desc = "Enable im-switch plugin" })
-
-	vim.api.nvim_create_user_command("ImSwitchDisable", function()
-		enabled = false
-		vim.notify("[im-switch] Disabled", vim.log.levels.INFO)
-		log("Plugin disabled")
-	end, { desc = "Disable im-switch plugin" })
-
-	vim.api.nvim_create_user_command("ImSwitchToggle", function()
-		enabled = not enabled
-		local status = enabled and "Enabled" or "Disabled"
-		vim.notify("[im-switch] " .. status, vim.log.levels.INFO)
-		log("Plugin " .. status:lower())
-		if enabled then
-			switch_to_default()
+	-- Probe the binary asynchronously so setup never blocks startup.
+	-- Autocmds and commands are only registered once the probe succeeds,
+	-- matching the old behavior of bailing out on a broken binary.
+	execute_command_async(nil, function(current)
+		if not current or current == "" then
+			vim.notify("[im-switch] Failed to get current input method", vim.log.levels.WARN)
+			return
 		end
-	end, { desc = "Toggle im-switch plugin" })
 
-	vim.api.nvim_create_user_command("ImSwitchStatus", function()
-		local status = enabled and "Enabled" or "Disabled"
-		local current = get_current_input()
-		local msg = string.format("[im-switch] Status: %s | Current input: %s", status, current or "Unknown")
-		vim.notify(msg, vim.log.levels.INFO)
-	end, { desc = "Show im-switch plugin status" })
+		log("Current input method: " .. current)
+		log("Default input method: " .. config.default_input)
 
-	log("im-switch plugin initialized")
+		setup_autocmds()
+		create_user_commands()
+
+		log("im-switch plugin initialized")
+	end)
 end
 
 function M.switch_to_english()

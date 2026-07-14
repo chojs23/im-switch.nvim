@@ -42,6 +42,37 @@ local function mock_vim()
 		end
 		return result
 	end
+	vim_mock.fn.mode = function()
+		return "n"
+	end
+	-- The plugin runs async callbacks via vim.schedule; run them inline so
+	-- the whole async chain resolves synchronously inside each test.
+	vim_mock.schedule = function(fn)
+		fn()
+	end
+	vim_mock.system = function(cmd, opts, on_exit)
+		local cmdline = table.concat(cmd, " ")
+		table.insert(_G.im_switch_test_commands, cmdline)
+
+		local stdout
+		if cmdline:find("%-%-capslock%-off") then
+			stdout = ""
+		elseif cmdline:find("%-l$") then
+			stdout = "com.apple.keylayout.ABC\ncom.apple.inputmethod.Korean.2SetKorean"
+		else
+			stdout = "com.apple.keylayout.ABC"
+		end
+
+		local result = { code = 0, stdout = stdout }
+		if on_exit then
+			on_exit(result)
+		end
+		return {
+			wait = function()
+				return result
+			end,
+		}
+	end
 	_G.vim = vim_mock
 
 	local debug_mock = _G.debug or {}
@@ -49,30 +80,6 @@ local function mock_vim()
 		return { source = "@/test/path/init.lua" }
 	end
 	_G.debug = debug_mock
-
-	_G.io = {
-		popen = function(cmd)
-			table.insert(_G.im_switch_test_commands, cmd)
-
-			local handle = {
-				read = function(self, format)
-					if cmd:find("im-switch$") then
-						return "com.apple.keylayout.ABC"
-					elseif cmd:find("im-switch -l") then
-						return "com.apple.keylayout.ABC\ncom.apple.inputmethod.Korean.2SetKorean"
-					elseif cmd:find("im%-switch %-%-capslock%-off") then
-						return ""
-					else
-						return "com.apple.keylayout.ABC"
-					end
-				end,
-				close = function(self)
-					return true
-				end,
-			}
-			return handle
-		end,
-	}
 end
 
 mock_vim()
